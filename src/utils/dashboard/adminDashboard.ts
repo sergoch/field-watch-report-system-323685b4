@@ -74,7 +74,9 @@ export const fetchAdminDashboardStats = async (
       .from('report_equipment')
       .select(`
         fuel_amount,
-        equipment:equipment_id(fuel_type)
+        equipment:equipment_id(
+          fuel_type
+        )
       `)
       .in('report_id', (reports || []).map(r => r.id));
     

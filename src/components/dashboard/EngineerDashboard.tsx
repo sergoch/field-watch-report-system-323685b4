@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import { AlertTriangle, FileText, Users, Truck, Calendar, Fuel, Database } from "lucide-react";
 import { DatePickerWithRange } from "@/components/datepicker/DateRangePicker";
 import { DateRange } from "react-day-picker";
-import { EngineerDashboardStats, fetchEngineerDashboardStats, TimeFrame } from "@/utils/dashboardUtils";
+import { EngineerDashboardStats, fetchEngineerDashboardStats, TimeFrame } from "@/utils/dashboard";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function EngineerDashboard() {

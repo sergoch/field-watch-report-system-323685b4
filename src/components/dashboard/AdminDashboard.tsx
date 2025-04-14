@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +9,7 @@ import {
   AdminDashboardStats, 
   fetchAdminDashboardStats, 
   TimeFrame 
-} from "@/utils/dashboardUtils";
+} from "@/utils/dashboard";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Select,
