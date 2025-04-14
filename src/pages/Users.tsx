@@ -1,23 +1,15 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, PlusCircle, Eye, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { Region } from '@/types';
 import { DeleteConfirmDialog } from '@/components/crud/DeleteConfirmDialog';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
+import { UserViewDialog } from '@/components/users/UserViewDialog';
+import { UserEditDialog } from '@/components/users/UserEditDialog';
+import { CreateUserDialog } from '@/components/users/CreateUserDialog';
 
 interface UserMetadata {
   name: string;
@@ -29,6 +21,7 @@ interface UserData {
   id: string;
   email: string | undefined;
   user_metadata: UserMetadata;
+  created_at?: string;
 }
 
 type UserProfile = {
@@ -38,23 +31,18 @@ type UserProfile = {
   region_id?: string;
   regionName?: string;
   role: 'engineer' | 'admin';
+  created_at?: string;
 };
 
 export default function UsersManagementPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [deleteUser, setDeleteUser] = useState<UserProfile | null>(null);
+  const [viewUser, setViewUser] = useState<UserProfile | null>(null);
+  const [editUser, setEditUser] = useState<UserProfile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   
-  const [newUser, setNewUser] = useState({
-    email: '',
-    name: '',
-    password: '',
-    region_id: '',
-    role: 'engineer' as const
-  });
-
   const { data: regions } = useSupabaseRealtime<Region>({ 
     tableName: 'regions' 
   });
@@ -86,13 +74,11 @@ export default function UsersManagementPage() {
 
     const engineerUsers = usersData.users
       .filter(user => {
-        // Explicitly cast the user to include user_metadata
         const userData = user as unknown as UserData;
         const metadata = userData.user_metadata;
         return metadata?.role === 'engineer';
       })
       .map(user => {
-        // Explicitly cast the user to include user_metadata
         const userData = user as unknown as UserData;
         const metadata = userData.user_metadata;
         const regionId = metadata?.region_id;
@@ -104,11 +90,50 @@ export default function UsersManagementPage() {
           name: metadata?.name || '',
           region_id: regionId,
           regionName,
-          role: metadata?.role as 'engineer'
+          role: metadata?.role as 'engineer',
+          created_at: user.created_at
         };
       });
 
     setUsers(engineerUsers);
+  };
+
+  const handleEditUser = async (data: { name: string; region_id: string }) => {
+    if (!editUser) return;
+    
+    setIsEditing(true);
+    
+    try {
+      const { error } = await supabase.auth.admin.updateUserById(
+        editUser.id,
+        {
+          user_metadata: {
+            name: data.name,
+            role: 'engineer',
+            region_id: data.region_id || null
+          }
+        }
+      );
+
+      if (error) throw error;
+
+      toast({
+        title: "User Updated",
+        description: `${data.name} has been updated successfully`
+      });
+      
+      fetchUsers();
+      setEditUser(null);
+      
+    } catch (error: any) {
+      toast({
+        title: "Error updating user",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsEditing(false);
+    }
   };
 
   const handleCreateUser = async () => {
@@ -253,6 +278,22 @@ export default function UsersManagementPage() {
                   </div>
                   <div className="flex space-x-2">
                     <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setViewUser(user)}
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span className="sr-only">View</span>
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setEditUser(user)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                      <span className="sr-only">Edit</span>
+                    </Button>
+                    <Button 
                       variant="destructive" 
                       size="sm"
                       onClick={() => setDeleteUser(user)}
@@ -270,69 +311,26 @@ export default function UsersManagementPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isCreating} onOpenChange={setIsCreating}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Engineer</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-1">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                placeholder="Full Name"
-                value={newUser.name}
-                onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Email"
-                value={newUser.email}
-                onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Password"
-                value={newUser.password}
-                onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="region">Region</Label>
-              <Select
-                value={newUser.region_id}
-                onValueChange={(value) => setNewUser(prev => ({ ...prev, region_id: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Region" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
-                  {regions.map(region => (
-                    <SelectItem key={region.id} value={region.id}>
-                      {region.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button 
-              onClick={handleCreateUser}
-              disabled={isCreatingUser}
-            >
-              {isCreatingUser ? "Creating..." : "Create User"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <CreateUserDialog 
+        isOpen={isCreating} 
+        onClose={() => setIsCreating(false)}
+        regions={regions}
+      />
+
+      <UserViewDialog
+        isOpen={!!viewUser}
+        onClose={() => setViewUser(null)}
+        user={viewUser}
+      />
+
+      <UserEditDialog
+        isOpen={!!editUser}
+        onClose={() => setEditUser(null)}
+        onSave={handleEditUser}
+        user={editUser}
+        regions={regions}
+        isSaving={isEditing}
+      />
 
       <DeleteConfirmDialog
         isOpen={!!deleteUser}
