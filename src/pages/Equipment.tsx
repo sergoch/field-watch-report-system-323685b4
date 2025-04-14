@@ -1,9 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 import { Equipment } from "@/types";
@@ -11,6 +8,8 @@ import { EquipmentTable } from "@/components/equipment/EquipmentTable";
 import { EditEquipmentDialog } from "@/components/equipment/EditEquipmentDialog";
 import { DeleteEquipmentDialog } from "@/components/equipment/DeleteEquipmentDialog";
 import { ViewEquipmentDialog } from "@/components/equipment/ViewEquipmentDialog";
+import { EquipmentHeader } from "@/components/equipment/EquipmentHeader";
+import { EquipmentSearch } from "@/components/equipment/EquipmentSearch";
 import * as XLSX from 'xlsx';
 import { supabase } from "@/integrations/supabase/client";
 
@@ -253,41 +252,21 @@ export default function EquipmentPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Equipment Registry</h1>
-          <p className="text-muted-foreground">Manage construction site equipment</p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button onClick={() => setIsCreating(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Equipment
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleExportToExcel}
-            disabled={filteredEquipment.length === 0}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export to Excel
-          </Button>
-        </div>
-      </div>
+      <EquipmentHeader
+        onAddEquipment={() => setIsCreating(true)}
+        onExportToExcel={handleExportToExcel}
+        hasEquipment={filteredEquipment.length > 0}
+      />
       
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>Equipment List</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by type, license plate or operator..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-sm"
-            />
-          </div>
+          <EquipmentSearch 
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
           
           <EquipmentTable 
             equipment={filteredEquipment}
