@@ -33,20 +33,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       // This is a mock implementation - will be replaced with Supabase auth
-      // For demo purposes, we're simulating different user roles
+      // For demo purposes, we're simulating different user roles with default credentials
       
       let mockUser: User;
       
-      if (email.includes('admin')) {
+      // Check for default admin (sergo)
+      if (email.toLowerCase() === 'sergo' && password === '599410902') {
         mockUser = {
           id: '1',
+          name: 'Sergo',
+          email: 'sergo@amradzi.com',
+          role: 'admin',
+        };
+      } 
+      // Check for default engineer (keda)
+      else if (email.toLowerCase() === 'keda' && password === 'keda') {
+        mockUser = {
+          id: '2',
+          name: 'Keda',
+          email: 'keda@amradzi.com',
+          role: 'engineer',
+          regionId: '1',
+        };
+      }
+      // Check for admin email
+      else if (email.includes('admin')) {
+        mockUser = {
+          id: '3',
           name: 'Admin User',
           email,
           role: 'admin',
         };
-      } else {
+      } 
+      // Default to engineer for all other logins
+      else {
         mockUser = {
-          id: '2',
+          id: '4',
           name: 'Engineer User',
           email,
           role: 'engineer',

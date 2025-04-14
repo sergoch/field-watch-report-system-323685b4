@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
 export function LoginForm() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
@@ -19,10 +19,10 @@ export function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    if (!identifier || !password) {
       toast({
         title: "Error",
-        description: "Please enter both email and password",
+        description: "Please enter both username and password",
         variant: "destructive",
       });
       return;
@@ -30,7 +30,7 @@ export function LoginForm() {
 
     try {
       setIsSubmitting(true);
-      await login(email, password);
+      await login(identifier, password);
       
       // If login successful, navigate to dashboard
       navigate('/dashboard');
@@ -38,7 +38,7 @@ export function LoginForm() {
       console.error('Login error:', error);
       toast({
         title: "Login Failed",
-        description: "Invalid email or password. Please try again.",
+        description: "Invalid username or password. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -55,13 +55,12 @@ export function LoginForm() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="identifier">Username</Label>
             <Input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="identifier"
+              placeholder="Enter your username"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               required
             />
           </div>
@@ -86,11 +85,21 @@ export function LoginForm() {
         </form>
       </CardContent>
       <CardFooter className="text-center text-sm">
-        <p className="text-muted-foreground w-full">
-          For demo, use: <br />
-          Admin: admin@amradzi.com (any password) <br />
-          Engineer: engineer@amradzi.com (any password)
-        </p>
+        <div className="text-muted-foreground w-full space-y-2">
+          <p>Default credentials:</p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="border rounded p-2">
+              <p className="font-bold">Admin</p>
+              <p>Username: sergo</p>
+              <p>Password: 599410902</p>
+            </div>
+            <div className="border rounded p-2">
+              <p className="font-bold">Engineer</p>
+              <p>Username: keda</p>
+              <p>Password: keda</p>
+            </div>
+          </div>
+        </div>
       </CardFooter>
     </Card>
   );
