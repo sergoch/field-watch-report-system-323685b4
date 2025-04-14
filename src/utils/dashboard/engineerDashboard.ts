@@ -94,10 +94,12 @@ export const fetchEngineerDashboardStats = async (
           const workerId = rw.workers.id as string;
           if (!workersSet.has(workerId)) {
             workersSet.add(workerId);
+            const fullName = rw.workers.full_name as string || '';
+            const personalId = rw.workers.personal_id as string || '';
             workers.push({
               id: workerId,
-              fullName: rw.workers.full_name as string,
-              personalId: rw.workers.personal_id as string
+              fullName: fullName,
+              personalId: personalId
             });
           }
         }
@@ -125,10 +127,12 @@ export const fetchEngineerDashboardStats = async (
           const equipId = re.equipment.id as string;
           if (!equipmentSet.has(equipId)) {
             equipmentSet.add(equipId);
+            const equipType = re.equipment.type as string || '';
+            const licensePlate = re.equipment.license_plate as string || '';
             equipment.push({
               id: equipId,
-              type: re.equipment.type as string,
-              licensePlate: re.equipment.license_plate as string
+              type: equipType,
+              licensePlate: licensePlate
             });
           }
         }
