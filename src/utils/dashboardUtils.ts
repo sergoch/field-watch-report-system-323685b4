@@ -164,39 +164,52 @@ export const fetchEngineerDashboardStats = async (
       .in('report_id', (recentReports || []).map(r => r.id));
     
     // Extract unique workers and equipment
-    const workersSet = new Set();
-    const workers = reportWorkers
-      ?.filter(rw => rw.workers)
-      .map(rw => rw.workers)
-      .filter(worker => {
-        if (workersSet.has(worker.id)) return false;
-        workersSet.add(worker.id);
-        return true;
-      }) || [];
+    const workersSet = new Set<string>();
+    const workers: { id: string; fullName: string; personalId: string }[] = [];
     
-    const equipmentSet = new Set();
-    const equipment = reportEquipment
-      ?.filter(re => re.equipment)
-      .map(re => re.equipment)
-      .filter(equip => {
-        if (equipmentSet.has(equip.id)) return false;
-        equipmentSet.add(equip.id);
-        return true;
-      }) || [];
+    reportWorkers?.forEach(rw => {
+      if (rw.workers && !workersSet.has(rw.workers.id)) {
+        workersSet.add(rw.workers.id);
+        workers.push({
+          id: rw.workers.id,
+          fullName: rw.workers.full_name,
+          personalId: rw.workers.personal_id
+        });
+      }
+    });
+    
+    const equipmentSet = new Set<string>();
+    const equipment: { id: string; type: string; licensePlate: string }[] = [];
+    
+    reportEquipment?.forEach(re => {
+      if (re.equipment && !equipmentSet.has(re.equipment.id)) {
+        equipmentSet.add(re.equipment.id);
+        equipment.push({
+          id: re.equipment.id,
+          type: re.equipment.type,
+          licensePlate: re.equipment.license_plate
+        });
+      }
+    });
+    
+    // Count operators (unique operator_ids from equipment)
+    const operatorIds = new Set<string>();
+    reportEquipment?.forEach(re => {
+      if (re.equipment?.operator_id) {
+        operatorIds.add(re.equipment.operator_id);
+      }
+    });
     
     // Calculate total fuel used
     const totalFuel = reportEquipment
       ?.reduce((sum, item) => sum + (item.fuel_amount || 0), 0) || 0;
-    
-    // Count operators
-    const operators = new Set(equipment.map(e => e.operator_id)).size;
     
     return {
       totalReports: totalReports || 0,
       totalIncidents: totalIncidents || 0,
       totalWorkers: workers,
       totalEquipment: equipment,
-      totalOperators: operators,
+      totalOperators: operatorIds.size,
       totalFuel,
       recentReports: recentReports || [],
       recentIncidents: recentIncidents || []
@@ -258,9 +271,13 @@ export const fetchAdminDashboardStats = async (
     const { count: equipmentCount, data: equipmentData } = await equipmentQuery;
     
     // Count unique operators
-    const operatorCount = equipmentData 
-      ? new Set(equipmentData.map(eq => eq.operator_id)).size 
-      : 0;
+    const operatorIds = new Set<string>();
+    equipmentData?.forEach(eq => {
+      if (eq.operator_id) {
+        operatorIds.add(eq.operator_id);
+      }
+    });
+    const operatorCount = operatorIds.size;
     
     // Fetch reports for fuel calculation, filtered by region/engineer/date if provided
     let reportsQuery = supabase
@@ -300,10 +317,11 @@ export const fetchAdminDashboardStats = async (
     // Calculate fuel by type
     const fuelMap = new Map<string, number>();
     reportEquipment?.forEach(item => {
-      if (!item.equipment?.fuel_type) return;
-      const fuelType = item.equipment.fuel_type;
-      const currentAmount = fuelMap.get(fuelType) || 0;
-      fuelMap.set(fuelType, currentAmount + (item.fuel_amount || 0));
+      if (item.equipment?.fuel_type) {
+        const fuelType = item.equipment.fuel_type;
+        const currentAmount = fuelMap.get(fuelType) || 0;
+        fuelMap.set(fuelType, currentAmount + (item.fuel_amount || 0));
+      }
     });
     
     const fuelByType = Array.from(fuelMap.entries()).map(([type, amount]) => ({
