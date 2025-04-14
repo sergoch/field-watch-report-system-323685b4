@@ -3,14 +3,14 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Plus, Search, Download, Eye, Calendar } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Search, Download, Calendar } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/use-toast";
 import { DatePickerWithRange } from "@/components/datepicker/DateRangePicker";
 import { DateRange } from "react-day-picker";
+import { ReportTable } from "@/components/reports/ReportTable";
+import { ReportDetails } from "@/components/reports/ReportDetails";
 
 interface Report {
   id: string;
@@ -140,102 +140,17 @@ export default function ReportsPage() {
             </div>
           </div>
           
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Region</TableHead>
-                  <TableHead>Workers</TableHead>
-                  <TableHead>Equipment</TableHead>
-                  <TableHead>Fuel (L)</TableHead>
-                  <TableHead>Materials</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredReports.length > 0 ? (
-                  filteredReports.map((report) => (
-                    <TableRow key={report.id}>
-                      <TableCell>{report.date}</TableCell>
-                      <TableCell>{report.region}</TableCell>
-                      <TableCell>{report.workers}</TableCell>
-                      <TableCell>{report.equipment}</TableCell>
-                      <TableCell>{report.fuel}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">{report.materials}</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setSelectedReport(report)}
-                        >
-                          <Eye className="h-4 w-4" />
-                          <span className="sr-only">View Details</span>
-                        </Button>
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/reports/${report.id}`}>
-                            <FileText className="h-4 w-4" />
-                            <span className="sr-only">Edit</span>
-                          </Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
-                      No reports found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <ReportTable 
+            reports={filteredReports}
+            onViewReport={setSelectedReport}
+          />
         </CardContent>
       </Card>
 
-      <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Report Details</DialogTitle>
-          </DialogHeader>
-          {selectedReport && (
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-semibold">Date</h3>
-                  <p>{selectedReport.date}</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold">Region</h3>
-                  <p>{selectedReport.region}</p>
-                </div>
-              </div>
-              <div>
-                <h3 className="font-semibold">Resources</h3>
-                <div className="grid grid-cols-3 gap-4 mt-2">
-                  <div>
-                    <span className="text-muted-foreground">Workers:</span>
-                    <p className="text-lg">{selectedReport.workers}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Equipment:</span>
-                    <p className="text-lg">{selectedReport.equipment}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Fuel Used:</span>
-                    <p className="text-lg">{selectedReport.fuel}L</p>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h3 className="font-semibold">Materials</h3>
-                <p className="mt-1">{selectedReport.materials}</p>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ReportDetails
+        report={selectedReport}
+        onClose={() => setSelectedReport(null)}
+      />
     </div>
   );
 }
