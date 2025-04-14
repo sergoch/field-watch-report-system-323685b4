@@ -8,6 +8,7 @@ export interface User {
   email: string;
   role: UserRole;
   regionId?: string;
+  region?: Region; // Added region relation
 }
 
 export interface Region {
@@ -20,6 +21,7 @@ export interface Worker {
   fullName: string;
   personalId: string;
   dailySalary: number;
+  createdAt?: string; // Added createdAt field
 }
 
 export interface Equipment {
@@ -55,6 +57,7 @@ export interface Report {
   totalWorkerSalary: number;
   workers: ReportWorker[];
   equipment: ReportEquipment[];
+  region?: Region; // Added region relation
 }
 
 export type IncidentType = "Cut" | "Parallel" | "Damage" | "Node" | "Hydrant" | "Chamber" | "Other";
@@ -71,4 +74,8 @@ export interface Incident {
   description: string;
   engineerId: string;
   regionId: string;
+  region?: Region; // Added region relation
+  // Add direct access to location properties for convenience
+  latitude?: number;
+  longitude?: number;
 }

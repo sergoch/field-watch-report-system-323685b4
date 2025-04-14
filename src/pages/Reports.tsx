@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ export default function ReportsPage() {
   const [regionNames, setRegionNames] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
-  // Use our real-time hook for the reports data
   const { 
     data: allReports, 
     loading,
@@ -34,10 +32,9 @@ export default function ReportsPage() {
     remove: removeReport
   } = useSupabaseRealtime<Report>({ 
     tableName: 'reports',
-    initialFetch: false // We'll handle the fetch manually with filters
+    initialFetch: false
   });
 
-  // Effect to fetch reports with filters
   useEffect(() => {
     const fetchReports = async () => {
       let query = supabase.from('reports').select(`
@@ -47,7 +44,6 @@ export default function ReportsPage() {
         )
       `).order('date', { ascending: false });
       
-      // Apply date filter if set
       if (dateRange?.from && dateRange?.to) {
         const fromDate = formatDateForQuery(dateRange.from);
         const toDate = formatDateForQuery(dateRange.to);
@@ -59,7 +55,6 @@ export default function ReportsPage() {
       if (error) {
         console.error('Error fetching reports:', error);
       } else {
-        // Manually update our data (bypassing useSupabaseRealtime's data for filtering)
         refetch();
       }
     };
@@ -67,7 +62,6 @@ export default function ReportsPage() {
     fetchReports();
   }, [dateRange]);
 
-  // Fetch region names
   useEffect(() => {
     const fetchRegions = async () => {
       const { data } = await supabase.from('regions').select('id, name');
@@ -83,12 +77,11 @@ export default function ReportsPage() {
     fetchRegions();
   }, []);
 
-  // Filter reports based on search query and date range
   const filteredReports = allReports.filter(report => {
     const matchesSearch = (
-      (report.regions?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (report.materials_used || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (report.materials_received || '').toLowerCase().includes(searchQuery.toLowerCase())
+      (report.region?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (report.materialsUsed || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (report.materialsReceived || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
     
     if (!dateRange?.from || !dateRange?.to) return matchesSearch;
@@ -104,7 +97,6 @@ export default function ReportsPage() {
     
     setIsDeleting(true);
     try {
-      // In a real implementation, you'd also delete related records
       await removeReport(deleteReport.id);
       
       toast({
@@ -126,36 +118,32 @@ export default function ReportsPage() {
 
   const handleExportToExcel = () => {
     try {
-      // Prepare data for export
       const exportData = filteredReports.map(report => {
-        // Format report data for export
         return {
           "Date": new Date(report.date).toLocaleDateString(),
-          "Region": report.regions?.name || "Unknown",
+          "Region": report.region?.name || "Unknown",
           "Workers Count": report.workers?.length || 0,
           "Equipment Count": report.equipment?.length || 0,
-          "Total Fuel (L)": report.total_fuel || 0,
-          "Materials Used": report.materials_used || "",
-          "Materials Received": report.materials_received || "",
+          "Total Fuel (L)": report.totalFuel || 0,
+          "Materials Used": report.materialsUsed || "",
+          "Materials Received": report.materialsReceived || "",
           "Description": report.description || ""
         };
       });
 
-      // Create and download the XLSX file
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Reports");
       
-      // Format columns
       const columnWidths = [
-        { wch: 12 }, // Date
-        { wch: 15 }, // Region
-        { wch: 15 }, // Workers
-        { wch: 15 }, // Equipment
-        { wch: 12 }, // Fuel
-        { wch: 40 }, // Materials Used
-        { wch: 40 }, // Materials Received
-        { wch: 40 }, // Description
+        { wch: 12 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 12 },
+        { wch: 40 },
+        { wch: 40 },
+        { wch: 40 }
       ];
       worksheet["!cols"] = columnWidths;
       
@@ -246,11 +234,11 @@ export default function ReportsPage() {
                     filteredReports.map((report) => (
                       <tr key={report.id} className="border-b hover:bg-muted/50">
                         <td className="p-2">{new Date(report.date).toLocaleDateString()}</td>
-                        <td className="p-2">{report.regions?.name}</td>
+                        <td className="p-2">{report.region?.name}</td>
                         <td className="p-2">{report.workers?.length || "0"}</td>
                         <td className="p-2">{report.equipment?.length || "0"}</td>
-                        <td className="p-2">{report.total_fuel}</td>
-                        <td className="p-2 max-w-xs truncate">{report.materials_used}</td>
+                        <td className="p-2">{report.totalFuel}</td>
+                        <td className="p-2 max-w-xs truncate">{report.materialsUsed}</td>
                         <td className="p-2 text-right">
                           <div className="flex justify-end gap-1">
                             <Button 
@@ -297,13 +285,11 @@ export default function ReportsPage() {
         </CardContent>
       </Card>
 
-      {/* Report Details Dialog */}
       <ReportDetails
         report={selectedReport}
         onClose={() => setSelectedReport(null)}
       />
 
-      {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog
         isOpen={!!deleteReport}
         onClose={() => setDeleteReport(null)}

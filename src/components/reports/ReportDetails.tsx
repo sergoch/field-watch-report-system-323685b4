@@ -15,6 +15,9 @@ interface ReportDetailsProps {
 export function ReportDetails({ report, onClose }: ReportDetailsProps) {
   if (!report) return null;
 
+  // Get region name from the regionId or show "Unknown"
+  const regionName = report.region?.name || "Unknown Region";
+
   return (
     <Dialog open={!!report} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl">
@@ -29,7 +32,7 @@ export function ReportDetails({ report, onClose }: ReportDetailsProps) {
             </div>
             <div>
               <h3 className="font-semibold">Region</h3>
-              <p>{report.regions?.name}</p>
+              <p>{regionName}</p>
             </div>
           </div>
           <div>

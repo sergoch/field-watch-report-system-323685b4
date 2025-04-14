@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -29,7 +28,6 @@ export default function IncidentsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [regionNames, setRegionNames] = useState<Record<string, string>>({});
   
-  // Use our real-time hook to fetch incidents data
   const { 
     data: incidents, 
     loading,
@@ -38,7 +36,6 @@ export default function IncidentsPage() {
     tableName: 'incidents'
   });
 
-  // Fetch region names
   useEffect(() => {
     const fetchRegions = async () => {
       const { data } = await supabase.from('regions').select('id, name');
@@ -54,19 +51,16 @@ export default function IncidentsPage() {
     fetchRegions();
   }, []);
   
-  // Incident types
   const incidentTypes: IncidentType[] = [
     "Cut", "Parallel", "Damage", "Node", "Hydrant", "Chamber", "Other"
   ];
   
-  // Filter incidents based on search query and active tab
   const filteredIncidents = incidents.filter(incident => 
     (activeTab === "All" || incident.type === activeTab) &&
-    (regionNames[incident.region_id || ""]?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (regionNames[incident.regionId || ""]?.toLowerCase().includes(searchQuery.toLowerCase()) ||
      incident.description?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Count incidents by type
   const getCounts = () => {
     const counts: Record<string, number> = { All: incidents.length };
     
@@ -114,7 +108,7 @@ export default function IncidentsPage() {
       ).map(incident => ({
         "Date": new Date(incident.date || "").toLocaleDateString(),
         "Type": incident.type,
-        "Region": regionNames[incident.region_id || ""] || "Unknown",
+        "Region": regionNames[incident.regionId || ""] || "Unknown",
         "Location": `${incident.latitude?.toString() || ""}, ${incident.longitude?.toString() || ""}`,
         "Description": incident.description || ""
       }));
@@ -195,7 +189,6 @@ export default function IncidentsPage() {
               ))}
             </TabsList>
             
-            {/* All Incidents Tab */}
             <TabsContent value="All" className="pt-2">
               <div className="flex justify-end mb-2">
                 <Button 
@@ -218,7 +211,6 @@ export default function IncidentsPage() {
               />
             </TabsContent>
             
-            {/* Type-specific Tabs */}
             {incidentTypes.map((type) => (
               <TabsContent key={type} value={type} className="pt-2">
                 <div className="flex justify-end mb-2">
@@ -246,7 +238,6 @@ export default function IncidentsPage() {
         </CardContent>
       </Card>
 
-      {/* View Incident Details Dialog */}
       <ViewDetailsDialog
         isOpen={!!viewIncident}
         onClose={() => setViewIncident(null)}
@@ -269,7 +260,7 @@ export default function IncidentsPage() {
               </div>
               <div>
                 <Label className="font-semibold">Region</Label>
-                <p>{regionNames[viewIncident.region_id || ""] || "Unknown"}</p>
+                <p>{regionNames[viewIncident.regionId || ""] || "Unknown"}</p>
               </div>
               <div>
                 <Label className="font-semibold">Location</Label>
@@ -285,12 +276,12 @@ export default function IncidentsPage() {
               <p className="mt-1 whitespace-pre-wrap">{viewIncident.description}</p>
             </div>
 
-            {viewIncident.image_url && (
+            {viewIncident.imageUrl && (
               <div>
                 <Label className="font-semibold">Incident Photo</Label>
                 <div className="mt-2 border rounded-md overflow-hidden">
                   <img 
-                    src={viewIncident.image_url} 
+                    src={viewIncident.imageUrl} 
                     alt="Incident" 
                     className="w-full h-auto max-h-60 object-contain"
                   />
@@ -315,17 +306,15 @@ export default function IncidentsPage() {
         )}
       </ViewDetailsDialog>
 
-      {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog
         isOpen={!!deleteIncident}
         onClose={() => setDeleteIncident(null)}
         onConfirm={handleDeleteIncident}
         title="Delete Incident"
-        description={`Are you sure you want to delete this ${deleteIncident?.type} incident from ${regionNames[deleteIncident?.region_id || ""] || "unknown region"}? This action cannot be undone.`}
+        description={`Are you sure you want to delete this ${deleteIncident?.type} incident from ${regionNames[deleteIncident?.regionId || ""] || "unknown region"}? This action cannot be undone.`}
         isDeleting={isDeleting}
       />
 
-      {/* Edit Dialog placeholder - would be implemented fully in practice */}
       <EditDialog
         isOpen={!!editIncident}
         onClose={() => setEditIncident(null)}
@@ -402,7 +391,7 @@ function IncidentTable({
                     {incident.type}
                   </span>
                 </TableCell>
-                <TableCell>{regionNames[incident.region_id || ""] || "Unknown"}</TableCell>
+                <TableCell>{regionNames[incident.regionId || ""] || "Unknown"}</TableCell>
                 <TableCell>
                   <span className="text-xs font-mono">
                     {incident.latitude?.toFixed(6) || "N/A"}, {incident.longitude?.toFixed(6) || "N/A"}
