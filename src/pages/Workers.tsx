@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,7 +51,6 @@ export default function WorkersPage() {
   const workers = workersData;
 
   useEffect(() => {
-    // Fetch regions for dropdown
     const fetchRegions = async () => {
       const { data, error } = await supabase
         .from('regions')

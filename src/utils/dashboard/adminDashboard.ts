@@ -182,8 +182,8 @@ export const fetchAdminDashboardStats = async (
     }));
     
     // Get recent reports and incidents for display
-    const recentReports = (reports || []).slice(0, 5);
-    const recentIncidents = (incidents || []).slice(0, 5);
+    const recentReports = reports ? reports.slice(0, 5) : [];
+    const recentIncidents = incidents ? incidents.slice(0, 5) : [];
     
     return {
       workerCount: workerCount || 0,

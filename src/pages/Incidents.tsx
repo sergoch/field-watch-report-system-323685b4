@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -36,7 +35,8 @@ export default function IncidentsPage() {
     data: incidents, 
     loading,
     remove: removeIncident,
-    refetch 
+    refetch,
+    setData: setIncidents 
   } = useSupabaseRealtime<Incident>({
     tableName: 'incidents',
     initialFetch: false, // We'll fetch manually with filters
@@ -61,13 +61,19 @@ export default function IncidentsPage() {
       
       if (error) {
         console.error('Error fetching incidents:', error);
-      } else {
-        refetch();
+        toast({
+          title: "Error loading incidents",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else if (data) {
+        // Store the fetched incidents in the state
+        setIncidents(data);
       }
     };
     
     fetchIncidents();
-  }, [user, isAdmin]);
+  }, [user, isAdmin, setIncidents, toast]);
 
   useEffect(() => {
     const fetchRegions = async () => {
