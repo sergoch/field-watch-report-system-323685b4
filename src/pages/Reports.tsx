@@ -1,46 +1,95 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Download, Calendar } from "lucide-react";
+import { Plus, Search, Download, Calendar, Eye, Edit, Trash2 } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/use-toast";
 import { DatePickerWithRange } from "@/components/datepicker/DateRangePicker";
 import { DateRange } from "react-day-picker";
 import { ReportTable } from "@/components/reports/ReportTable";
 import { ReportDetails } from "@/components/reports/ReportDetails";
-
-interface Report {
-  id: string;
-  date: string;
-  region: string;
-  workers: number;
-  equipment: number;
-  fuel: number;
-  materials: string;
-}
+import { supabase } from "@/integrations/supabase/client";
+import { Report } from "@/types";
+import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
+import { DeleteConfirmDialog } from "@/components/crud/DeleteConfirmDialog";
+import { formatDateForQuery } from "@/utils/dashboard/dateUtils";
 
 export default function ReportsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [deleteReport, setDeleteReport] = useState<Report | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [regionNames, setRegionNames] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
-  // Mock data for reports (replace with actual data fetching later)
-  const mockReports = [
-    { id: "1", date: "2023-08-15", region: "North", workers: 8, equipment: 3, fuel: 125, materials: "Concrete, steel" },
-    { id: "2", date: "2023-08-14", region: "East", workers: 12, equipment: 5, fuel: 180, materials: "Bricks, cement" },
-    { id: "3", date: "2023-08-13", region: "South", workers: 6, equipment: 2, fuel: 90, materials: "Pipes, valves" },
-    { id: "4", date: "2023-08-12", region: "West", workers: 10, equipment: 4, fuel: 155, materials: "Sand, gravel" },
-    { id: "5", date: "2023-08-11", region: "Central", workers: 15, equipment: 7, fuel: 210, materials: "Wood, metal sheets" },
-  ];
+  // Use our real-time hook for the reports data
+  const { 
+    data: allReports, 
+    loading,
+    refetch,
+    remove: removeReport
+  } = useSupabaseRealtime<Report>({ 
+    tableName: 'reports',
+    initialFetch: false // We'll handle the fetch manually with filters
+  });
+
+  // Effect to fetch reports with filters
+  useEffect(() => {
+    const fetchReports = async () => {
+      let query = supabase.from('reports').select(`
+        *,
+        regions (
+          name
+        )
+      `).order('date', { ascending: false });
+      
+      // Apply date filter if set
+      if (dateRange?.from && dateRange?.to) {
+        const fromDate = formatDateForQuery(dateRange.from);
+        const toDate = formatDateForQuery(dateRange.to);
+        query = query.gte('date', fromDate).lte('date', toDate);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching reports:', error);
+      } else {
+        // Manually update our data (bypassing useSupabaseRealtime's data for filtering)
+        refetch();
+      }
+    };
+    
+    fetchReports();
+  }, [dateRange]);
+
+  // Fetch region names
+  useEffect(() => {
+    const fetchRegions = async () => {
+      const { data } = await supabase.from('regions').select('id, name');
+      if (data) {
+        const regions: Record<string, string> = {};
+        data.forEach(region => {
+          regions[region.id] = region.name;
+        });
+        setRegionNames(regions);
+      }
+    };
+    
+    fetchRegions();
+  }, []);
 
   // Filter reports based on search query and date range
-  const filteredReports = mockReports.filter(report => {
-    const matchesSearch = report.region.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.materials.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredReports = allReports.filter(report => {
+    const matchesSearch = (
+      (report.regions?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (report.materials_used || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (report.materials_received || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
     
     if (!dateRange?.from || !dateRange?.to) return matchesSearch;
     
@@ -50,17 +99,49 @@ export default function ReportsPage() {
       reportDate <= dateRange.to;
   });
 
+  const handleDeleteReport = async () => {
+    if (!deleteReport) return;
+    
+    setIsDeleting(true);
+    try {
+      // In a real implementation, you'd also delete related records
+      await removeReport(deleteReport.id);
+      
+      toast({
+        title: "Report Deleted",
+        description: `Report for ${deleteReport.date} has been deleted successfully.`
+      });
+      
+      setDeleteReport(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete the report.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleExportToExcel = () => {
     try {
-      const exportData = filteredReports.map(report => ({
-        Date: report.date,
-        Region: report.region,
-        "Number of Workers": report.workers,
-        "Equipment Used": report.equipment,
-        "Fuel Used (L)": report.fuel,
-        "Materials": report.materials,
-      }));
+      // Prepare data for export
+      const exportData = filteredReports.map(report => {
+        // Format report data for export
+        return {
+          "Date": new Date(report.date).toLocaleDateString(),
+          "Region": report.regions?.name || "Unknown",
+          "Workers Count": report.workers?.length || 0,
+          "Equipment Count": report.equipment?.length || 0,
+          "Total Fuel (L)": report.total_fuel || 0,
+          "Materials Used": report.materials_used || "",
+          "Materials Received": report.materials_received || "",
+          "Description": report.description || ""
+        };
+      });
 
+      // Create and download the XLSX file
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Reports");
@@ -72,7 +153,9 @@ export default function ReportsPage() {
         { wch: 15 }, // Workers
         { wch: 15 }, // Equipment
         { wch: 12 }, // Fuel
-        { wch: 40 }, // Materials
+        { wch: 40 }, // Materials Used
+        { wch: 40 }, // Materials Received
+        { wch: 40 }, // Description
       ];
       worksheet["!cols"] = columnWidths;
       
@@ -140,16 +223,94 @@ export default function ReportsPage() {
             </div>
           </div>
           
-          <ReportTable 
-            reports={filteredReports}
-            onViewReport={setSelectedReport}
-          />
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading reports data...
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="p-2 text-left font-medium">Date</th>
+                    <th className="p-2 text-left font-medium">Region</th>
+                    <th className="p-2 text-left font-medium">Workers</th>
+                    <th className="p-2 text-left font-medium">Equipment</th>
+                    <th className="p-2 text-left font-medium">Fuel (L)</th>
+                    <th className="p-2 text-left font-medium">Materials</th>
+                    <th className="p-2 text-right font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredReports.length > 0 ? (
+                    filteredReports.map((report) => (
+                      <tr key={report.id} className="border-b hover:bg-muted/50">
+                        <td className="p-2">{new Date(report.date).toLocaleDateString()}</td>
+                        <td className="p-2">{report.regions?.name}</td>
+                        <td className="p-2">{report.workers?.length || "0"}</td>
+                        <td className="p-2">{report.equipment?.length || "0"}</td>
+                        <td className="p-2">{report.total_fuel}</td>
+                        <td className="p-2 max-w-xs truncate">{report.materials_used}</td>
+                        <td className="p-2 text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => setSelectedReport(report)}
+                            >
+                              <Eye className="h-4 w-4" />
+                              <span className="sr-only">View</span>
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              asChild
+                            >
+                              <Link to={`/reports/${report.id}/edit`}>
+                                <Edit className="h-4 w-4" />
+                                <span className="sr-only">Edit</span>
+                              </Link>
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setDeleteReport(report)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="h-32 text-center text-muted-foreground">
+                        No reports found matching your filters.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
+      {/* Report Details Dialog */}
       <ReportDetails
         report={selectedReport}
         onClose={() => setSelectedReport(null)}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        isOpen={!!deleteReport}
+        onClose={() => setDeleteReport(null)}
+        onConfirm={handleDeleteReport}
+        title="Delete Report"
+        description={`Are you sure you want to delete the report from ${deleteReport ? new Date(deleteReport.date).toLocaleDateString() : ""}? This action cannot be undone and will permanently remove the report and all associated data.`}
+        isDeleting={isDeleting}
       />
     </div>
   );

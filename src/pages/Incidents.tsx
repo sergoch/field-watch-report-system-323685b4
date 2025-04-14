@@ -1,49 +1,125 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, Plus, Search, Download, Eye } from "lucide-react";
-import { IncidentType } from "@/types";
-import * as XLSX from 'xlsx';
+import { AlertTriangle, Plus, Search, Download, Eye, Edit, Trash2 } from "lucide-react";
+import { IncidentType, Incident } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
+import { ViewDetailsDialog } from "@/components/crud/ViewDetailsDialog";
+import { EditDialog } from "@/components/crud/EditDialog";
+import { DeleteConfirmDialog } from "@/components/crud/DeleteConfirmDialog";
+import { Label } from "@/components/ui/label";
+import * as XLSX from 'xlsx';
+import { supabase } from "@/integrations/supabase/client";
+import { MapPin } from "lucide-react";
 
 export default function IncidentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<IncidentType | "All">("All");
   const { toast } = useToast();
+  
+  const [viewIncident, setViewIncident] = useState<Incident | null>(null);
+  const [editIncident, setEditIncident] = useState<Incident | null>(null);
+  const [deleteIncident, setDeleteIncident] = useState<Incident | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [regionNames, setRegionNames] = useState<Record<string, string>>({});
+  
+  // Use our real-time hook to fetch incidents data
+  const { 
+    data: incidents, 
+    loading,
+    remove: removeIncident 
+  } = useSupabaseRealtime<Incident>({
+    tableName: 'incidents'
+  });
+
+  // Fetch region names
+  useEffect(() => {
+    const fetchRegions = async () => {
+      const { data } = await supabase.from('regions').select('id, name');
+      if (data) {
+        const regions: Record<string, string> = {};
+        data.forEach(region => {
+          regions[region.id] = region.name;
+        });
+        setRegionNames(regions);
+      }
+    };
+    
+    fetchRegions();
+  }, []);
   
   // Incident types
   const incidentTypes: IncidentType[] = [
     "Cut", "Parallel", "Damage", "Node", "Hydrant", "Chamber", "Other"
   ];
   
-  // Mock data for incidents
-  const mockIncidents = [
-    { id: "1", date: "2023-08-15", type: "Cut" as IncidentType, region: "North", location: "41.7128, 44.0060", description: "Cut in main line" },
-    { id: "2", date: "2023-08-14", type: "Damage" as IncidentType, region: "East", location: "41.7456, 44.1289", description: "Damage to insulation" },
-    { id: "3", date: "2023-08-13", type: "Hydrant" as IncidentType, region: "South", location: "41.6987, 44.0345", description: "Hydrant malfunction" },
-    { id: "4", date: "2023-08-12", type: "Parallel" as IncidentType, region: "West", location: "41.7234, 44.0789", description: "Parallel line issue" },
-    { id: "5", date: "2023-08-11", type: "Node" as IncidentType, region: "Central", location: "41.7678, 44.0478", description: "Node connection failure" },
-    { id: "6", date: "2023-08-10", type: "Chamber" as IncidentType, region: "North", location: "41.7129, 44.0062", description: "Chamber access blocked" },
-    { id: "7", date: "2023-08-09", type: "Other" as IncidentType, region: "East", location: "41.7458, 44.1291", description: "Unknown issue" },
-    { id: "8", date: "2023-08-08", type: "Cut" as IncidentType, region: "South", location: "41.6989, 44.0347", description: "Secondary line cut" },
-  ];
-  
   // Filter incidents based on search query and active tab
-  const getFilteredIncidents = (type: IncidentType | "All") => {
-    return mockIncidents.filter(incident => 
-      (type === "All" || incident.type === type) &&
-      (incident.region.toLowerCase().includes(searchQuery.toLowerCase()) ||
-       incident.description.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+  const filteredIncidents = incidents.filter(incident => 
+    (activeTab === "All" || incident.type === activeTab) &&
+    (regionNames[incident.region_id || ""]?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     incident.description?.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  // Count incidents by type
+  const getCounts = () => {
+    const counts: Record<string, number> = { All: incidents.length };
+    
+    incidentTypes.forEach(type => {
+      counts[type] = incidents.filter(incident => incident.type === type).length;
+    });
+    
+    return counts;
+  };
+  
+  const counts = getCounts();
+
+  const handleViewIncident = (incident: Incident) => {
+    setViewIncident(incident);
+  };
+
+  const handleDeleteIncident = async () => {
+    if (!deleteIncident) return;
+    
+    setIsDeleting(true);
+    try {
+      await removeIncident(deleteIncident.id);
+      
+      toast({
+        title: "Incident Deleted",
+        description: `${deleteIncident.type} incident has been deleted successfully.`
+      });
+      
+      setDeleteIncident(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete the incident.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleExportToExcel = (type: IncidentType | "All") => {
     try {
-      const filteredIncidents = getFilteredIncidents(type);
-      const worksheet = XLSX.utils.json_to_sheet(filteredIncidents);
+      const dataToExport = incidents.filter(incident => 
+        type === "All" || incident.type === type
+      ).map(incident => ({
+        "Date": new Date(incident.date || "").toLocaleDateString(),
+        "Type": incident.type,
+        "Region": regionNames[incident.region_id || ""] || "Unknown",
+        "Location": `${incident.latitude?.toString() || ""}, ${incident.longitude?.toString() || ""}`,
+        "Description": incident.description || ""
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, `${type} Incidents`);
       XLSX.writeFile(workbook, `amradzi_${type.toLowerCase()}_incidents_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -60,19 +136,6 @@ export default function IncidentsPage() {
       });
     }
   };
-  
-  // Count incidents by type
-  const getCounts = () => {
-    const counts: Record<string, number> = { All: mockIncidents.length };
-    
-    incidentTypes.forEach(type => {
-      counts[type] = mockIncidents.filter(incident => incident.type === type).length;
-    });
-    
-    return counts;
-  };
-  
-  const counts = getCounts();
 
   return (
     <div className="space-y-6">
@@ -88,9 +151,13 @@ export default function IncidentsPage() {
               Report Incident
             </Link>
           </Button>
-          <Button variant="outline" onClick={() => handleExportToExcel("All")}>
+          <Button 
+            variant="outline" 
+            onClick={() => handleExportToExcel(activeTab)}
+            disabled={filteredIncidents.length === 0}
+          >
             <Download className="mr-2 h-4 w-4" />
-            Export All to Excel
+            Export to Excel
           </Button>
         </div>
       </div>
@@ -110,7 +177,7 @@ export default function IncidentsPage() {
             />
           </div>
           
-          <Tabs defaultValue="All" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab as (value: string) => void} className="w-full">
             <TabsList className="mb-4 flex flex-wrap">
               <TabsTrigger value="All" className="relative">
                 All
@@ -135,13 +202,20 @@ export default function IncidentsPage() {
                   variant="outline" 
                   size="sm" 
                   onClick={() => handleExportToExcel("All")}
-                  disabled={getFilteredIncidents("All").length === 0}
+                  disabled={filteredIncidents.length === 0}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Export
                 </Button>
               </div>
-              <IncidentTable incidents={getFilteredIncidents("All")} />
+              <IncidentTable 
+                incidents={filteredIncidents} 
+                loading={loading}
+                regionNames={regionNames}
+                onView={handleViewIncident}
+                onEdit={(incident) => setEditIncident(incident)}
+                onDelete={(incident) => setDeleteIncident(incident)}
+              />
             </TabsContent>
             
             {/* Type-specific Tabs */}
@@ -152,34 +226,152 @@ export default function IncidentsPage() {
                     variant="outline" 
                     size="sm" 
                     onClick={() => handleExportToExcel(type)}
-                    disabled={getFilteredIncidents(type).length === 0}
+                    disabled={filteredIncidents.filter(i => i.type === type).length === 0}
                   >
                     <Download className="mr-2 h-4 w-4" />
                     Export
                   </Button>
                 </div>
-                <IncidentTable incidents={getFilteredIncidents(type)} />
+                <IncidentTable 
+                  incidents={filteredIncidents.filter(i => i.type === type)}
+                  loading={loading}
+                  regionNames={regionNames}
+                  onView={handleViewIncident}
+                  onEdit={(incident) => setEditIncident(incident)}
+                  onDelete={(incident) => setDeleteIncident(incident)}
+                />
               </TabsContent>
             ))}
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* View Incident Details Dialog */}
+      <ViewDetailsDialog
+        isOpen={!!viewIncident}
+        onClose={() => setViewIncident(null)}
+        title={`${viewIncident?.type} Incident Details`}
+        description="Complete incident information"
+      >
+        {viewIncident && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="font-semibold">Date</Label>
+                <p>{new Date(viewIncident.date || "").toLocaleDateString()}</p>
+              </div>
+              <div>
+                <Label className="font-semibold">Type</Label>
+                <p className="flex items-center">
+                  <AlertTriangle className="h-4 w-4 mr-1" />
+                  {viewIncident.type}
+                </p>
+              </div>
+              <div>
+                <Label className="font-semibold">Region</Label>
+                <p>{regionNames[viewIncident.region_id || ""] || "Unknown"}</p>
+              </div>
+              <div>
+                <Label className="font-semibold">Location</Label>
+                <p className="flex items-center text-xs font-mono">
+                  <MapPin className="h-4 w-4 mr-1" />
+                  {viewIncident.latitude}, {viewIncident.longitude}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <Label className="font-semibold">Description</Label>
+              <p className="mt-1 whitespace-pre-wrap">{viewIncident.description}</p>
+            </div>
+
+            {viewIncident.image_url && (
+              <div>
+                <Label className="font-semibold">Incident Photo</Label>
+                <div className="mt-2 border rounded-md overflow-hidden">
+                  <img 
+                    src={viewIncident.image_url} 
+                    alt="Incident" 
+                    className="w-full h-auto max-h-60 object-contain"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  setViewIncident(null);
+                  setEditIncident(viewIncident);
+                }}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Incident
+              </Button>
+            </div>
+          </div>
+        )}
+      </ViewDetailsDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        isOpen={!!deleteIncident}
+        onClose={() => setDeleteIncident(null)}
+        onConfirm={handleDeleteIncident}
+        title="Delete Incident"
+        description={`Are you sure you want to delete this ${deleteIncident?.type} incident from ${regionNames[deleteIncident?.region_id || ""] || "unknown region"}? This action cannot be undone.`}
+        isDeleting={isDeleting}
+      />
+
+      {/* Edit Dialog placeholder - would be implemented fully in practice */}
+      <EditDialog
+        isOpen={!!editIncident}
+        onClose={() => setEditIncident(null)}
+        title="Edit Incident"
+        description="Update incident details"
+        onSave={() => {
+          toast({
+            title: "Not Implemented",
+            description: "Editing incidents requires a more complex form. Use the incident form page instead.",
+            variant: "destructive"
+          });
+          setEditIncident(null);
+        }}
+      >
+        <div className="py-4 text-center">
+          <p>For editing incidents, please use the full incident form.</p>
+          <div className="mt-4">
+            <Button asChild>
+              <Link to={`/incidents/${editIncident?.id}`}>
+                Go to Incident Form
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </EditDialog>
     </div>
   );
 }
 
 interface IncidentTableProps {
-  incidents: Array<{
-    id: string;
-    date: string;
-    type: IncidentType;
-    region: string;
-    location: string;
-    description: string;
-  }>;
+  incidents: Incident[];
+  loading: boolean;
+  regionNames: Record<string, string>;
+  onView: (incident: Incident) => void;
+  onEdit: (incident: Incident) => void;
+  onDelete: (incident: Incident) => void;
 }
 
-function IncidentTable({ incidents }: IncidentTableProps) {
+function IncidentTable({ 
+  incidents, 
+  loading,
+  regionNames,
+  onView,
+  onEdit,
+  onDelete
+}: IncidentTableProps) {
   return (
     <div className="rounded-md border">
       <Table>
@@ -194,28 +386,56 @@ function IncidentTable({ incidents }: IncidentTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {incidents.length > 0 ? (
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={6} className="h-24 text-center">
+                Loading incidents data...
+              </TableCell>
+            </TableRow>
+          ) : incidents.length > 0 ? (
             incidents.map((incident) => (
               <TableRow key={incident.id}>
-                <TableCell>{incident.date}</TableCell>
+                <TableCell>{new Date(incident.date || "").toLocaleDateString()}</TableCell>
                 <TableCell>
                   <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset">
                     <AlertTriangle className="mr-1 h-3 w-3" />
                     {incident.type}
                   </span>
                 </TableCell>
-                <TableCell>{incident.region}</TableCell>
+                <TableCell>{regionNames[incident.region_id || ""] || "Unknown"}</TableCell>
                 <TableCell>
-                  <span className="text-xs font-mono">{incident.location}</span>
+                  <span className="text-xs font-mono">
+                    {incident.latitude?.toFixed(6) || "N/A"}, {incident.longitude?.toFixed(6) || "N/A"}
+                  </span>
                 </TableCell>
                 <TableCell className="max-w-md truncate">{incident.description}</TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to={`/incidents/${incident.id}`}>
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => onView(incident)}
+                    >
                       <Eye className="h-4 w-4" />
                       <span className="sr-only">View</span>
-                    </Link>
-                  </Button>
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => onEdit(incident)}
+                    >
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Edit</span>
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => onDelete(incident)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <span className="sr-only">Delete</span>
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))
