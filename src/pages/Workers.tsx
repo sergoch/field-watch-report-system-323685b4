@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,26 +12,31 @@ import { ViewDetailsDialog } from "@/components/crud/ViewDetailsDialog";
 import { EditDialog } from "@/components/crud/EditDialog";
 import { DeleteConfirmDialog } from "@/components/crud/DeleteConfirmDialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import * as XLSX from 'xlsx';
+import { supabase } from "@/integrations/supabase/client";
 
 interface WorkerWithMeta extends Worker {
   createdAt?: string;
+  region_id?: string;
 }
 
 export default function WorkersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
-  const [viewWorker, setViewWorker] = useState<Worker | null>(null);
-  const [editWorker, setEditWorker] = useState<Worker | null>(null);
-  const [deleteWorker, setDeleteWorker] = useState<Worker | null>(null);
+  const [viewWorker, setViewWorker] = useState<WorkerWithMeta | null>(null);
+  const [editWorker, setEditWorker] = useState<WorkerWithMeta | null>(null);
+  const [deleteWorker, setDeleteWorker] = useState<WorkerWithMeta | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [regions, setRegions] = useState<{ id: string, name: string }[]>([]);
   
   const [formData, setFormData] = useState({
     fullName: '',
     personalId: '',
-    dailySalary: 0
+    dailySalary: 0,
+    region_id: ''
   });
 
   const { 
@@ -46,17 +51,36 @@ export default function WorkersPage() {
 
   const workers = workersData;
 
+  useEffect(() => {
+    // Fetch regions for dropdown
+    const fetchRegions = async () => {
+      const { data, error } = await supabase
+        .from('regions')
+        .select('id, name')
+        .order('name');
+        
+      if (error) {
+        console.error('Error fetching regions:', error);
+      } else if (data) {
+        setRegions(data);
+      }
+    };
+    
+    fetchRegions();
+  }, []);
+
   const filteredWorkers = workers.filter(worker => 
     worker.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     worker.personalId.includes(searchQuery)
   );
   
-  const handleOpenEditDialog = (worker: Worker) => {
+  const handleOpenEditDialog = (worker: WorkerWithMeta) => {
     setEditWorker(worker);
     setFormData({
       fullName: worker.fullName,
       personalId: worker.personalId,
-      dailySalary: worker.dailySalary
+      dailySalary: worker.dailySalary,
+      region_id: worker.region_id || ''
     });
   };
 
@@ -70,7 +94,8 @@ export default function WorkersPage() {
       await updateWorker(editWorker.id, {
         fullName: formData.fullName,
         personalId: formData.personalId,
-        dailySalary: formData.dailySalary
+        dailySalary: formData.dailySalary,
+        region_id: formData.region_id || null
       });
       
       toast({
@@ -79,10 +104,10 @@ export default function WorkersPage() {
       });
       
       setEditWorker(null);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Update Failed",
-        description: "There was an error updating the worker.",
+        description: error.message || "There was an error updating the worker.",
         variant: "destructive"
       });
     } finally {
@@ -103,10 +128,10 @@ export default function WorkersPage() {
       });
       
       setDeleteWorker(null);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Deletion Failed",
-        description: "There was an error removing the worker.",
+        description: error.message || "There was an error removing the worker.",
         variant: "destructive"
       });
     } finally {
@@ -122,7 +147,8 @@ export default function WorkersPage() {
       await addWorker({
         fullName: formData.fullName,
         personalId: formData.personalId,
-        dailySalary: formData.dailySalary
+        dailySalary: formData.dailySalary,
+        region_id: formData.region_id || null
       });
       
       toast({
@@ -132,10 +158,10 @@ export default function WorkersPage() {
       
       resetForm();
       setIsCreating(false);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Creation Failed",
-        description: "There was an error adding the worker.",
+        description: error.message || "There was an error adding the worker.",
         variant: "destructive"
       });
     } finally {
@@ -175,17 +201,23 @@ export default function WorkersPage() {
     setFormData({
       fullName: '',
       personalId: '',
-      dailySalary: 0
+      dailySalary: 0,
+      region_id: ''
     });
   };
 
   const handleExportToExcel = () => {
     try {
-      const exportData = filteredWorkers.map(worker => ({
-        "Full Name": worker.fullName,
-        "Personal ID": worker.personalId,
-        "Daily Salary (GEL)": worker.dailySalary
-      }));
+      const exportData = filteredWorkers.map(worker => {
+        const region = regions.find(r => r.id === worker.region_id);
+        
+        return {
+          "Full Name": worker.fullName,
+          "Personal ID": worker.personalId,
+          "Daily Salary (GEL)": worker.dailySalary,
+          "Region": region?.name || "Unassigned"
+        };
+      });
 
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
@@ -197,10 +229,10 @@ export default function WorkersPage() {
         title: "Export Successful",
         description: "Workers data exported to Excel successfully."
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Export Failed",
-        description: "Could not export data to Excel.",
+        description: error.message || "Could not export data to Excel.",
         variant: "destructive"
       });
     }
@@ -253,6 +285,7 @@ export default function WorkersPage() {
                 <TableRow>
                   <TableHead>Full Name</TableHead>
                   <TableHead>Personal ID</TableHead>
+                  <TableHead>Region</TableHead>
                   <TableHead>Daily Salary (GEL)</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -260,49 +293,54 @@ export default function WorkersPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       Loading workers data...
                     </TableCell>
                   </TableRow>
                 ) : filteredWorkers.length > 0 ? (
-                  filteredWorkers.map((worker) => (
-                    <TableRow key={worker.id}>
-                      <TableCell className="font-medium">{worker.fullName}</TableCell>
-                      <TableCell>{worker.personalId}</TableCell>
-                      <TableCell>{worker.dailySalary}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => setViewWorker(worker)}
-                          >
-                            <Eye className="h-4 w-4" />
-                            <span className="sr-only">View</span>
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleOpenEditDialog(worker)}
-                          >
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Edit</span>
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => setDeleteWorker(worker)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                            <span className="sr-only">Delete</span>
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  filteredWorkers.map((worker) => {
+                    const region = regions.find(r => r.id === worker.region_id);
+                    
+                    return (
+                      <TableRow key={worker.id}>
+                        <TableCell className="font-medium">{worker.fullName}</TableCell>
+                        <TableCell>{worker.personalId}</TableCell>
+                        <TableCell>{region?.name || "Unassigned"}</TableCell>
+                        <TableCell>{worker.dailySalary}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => setViewWorker(worker)}
+                            >
+                              <Eye className="h-4 w-4" />
+                              <span className="sr-only">View</span>
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleOpenEditDialog(worker)}
+                            >
+                              <Edit className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setDeleteWorker(worker)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       No workers found.
                     </TableCell>
                   </TableRow>
@@ -329,6 +367,10 @@ export default function WorkersPage() {
               <div>
                 <Label className="font-semibold">Personal ID</Label>
                 <p>{viewWorker.personalId}</p>
+              </div>
+              <div>
+                <Label className="font-semibold">Region</Label>
+                <p>{regions.find(r => r.id === viewWorker.region_id)?.name || "Unassigned"}</p>
               </div>
               <div>
                 <Label className="font-semibold">Daily Salary</Label>
@@ -373,6 +415,25 @@ export default function WorkersPage() {
             />
           </div>
           <div>
+            <Label htmlFor="region">Region</Label>
+            <Select 
+              value={formData.region_id} 
+              onValueChange={(value) => setFormData({...formData, region_id: value})}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Region" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Unassigned</SelectItem>
+                {regions.map(region => (
+                  <SelectItem key={region.id} value={region.id}>
+                    {region.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label htmlFor="dailySalary">Daily Salary (GEL)</Label>
             <Input
               id="dailySalary"
@@ -412,6 +473,25 @@ export default function WorkersPage() {
               onChange={(e) => setFormData({...formData, personalId: e.target.value})}
               className="mt-1"
             />
+          </div>
+          <div>
+            <Label htmlFor="newRegion">Region</Label>
+            <Select 
+              value={formData.region_id} 
+              onValueChange={(value) => setFormData({...formData, region_id: value})}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Region" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Unassigned</SelectItem>
+                {regions.map(region => (
+                  <SelectItem key={region.id} value={region.id}>
+                    {region.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label htmlFor="newDailySalary">Daily Salary (GEL)</Label>

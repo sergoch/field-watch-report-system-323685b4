@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,11 +15,14 @@ import { IncidentsFilter } from "@/components/incidents/IncidentsFilter";
 import { IncidentDetails } from "@/components/incidents/IncidentDetails";
 import * as XLSX from 'xlsx';
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function IncidentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<IncidentType | "All">("All");
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   
   const [viewIncident, setViewIncident] = useState<Incident | null>(null);
   const [editIncident, setEditIncident] = useState<Incident | null>(null);
@@ -27,13 +31,43 @@ export default function IncidentsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [regionNames, setRegionNames] = useState<Record<string, string>>({});
   
+  // Configure realtime subscription with role-based filtering
   const { 
     data: incidents, 
     loading,
-    remove: removeIncident 
+    remove: removeIncident,
+    refetch 
   } = useSupabaseRealtime<Incident>({
-    tableName: 'incidents'
+    tableName: 'incidents',
+    initialFetch: false, // We'll fetch manually with filters
   });
+
+  useEffect(() => {
+    // Fetch incidents with role-based filtering
+    const fetchIncidents = async () => {
+      let query = supabase.from('incidents').select(`
+        *,
+        regions (
+          name
+        )
+      `);
+      
+      // If not admin, only show the user's incidents
+      if (!isAdmin && user?.id) {
+        query = query.eq('engineer_id', user.id);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching incidents:', error);
+      } else {
+        refetch();
+      }
+    };
+    
+    fetchIncidents();
+  }, [user, isAdmin]);
 
   useEffect(() => {
     const fetchRegions = async () => {

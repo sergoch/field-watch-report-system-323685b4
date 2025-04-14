@@ -26,8 +26,6 @@ export const fetchAdminDashboardStats = async (
       .select('*', { count: 'exact' });
     
     if (filter.regionId) {
-      // For workers, we might need to join with other tables to filter by region
-      // This depends on your data model
       workersQuery = workersQuery.eq('region_id', filter.regionId);
     }
     
@@ -37,6 +35,10 @@ export const fetchAdminDashboardStats = async (
     let equipmentQuery = supabase
       .from('equipment')
       .select('*', { count: 'exact' });
+    
+    if (filter.regionId) {
+      equipmentQuery = equipmentQuery.eq('region_id', filter.regionId);
+    }
     
     const { count: equipmentCount, data: equipmentData } = await equipmentQuery;
     
@@ -50,7 +52,7 @@ export const fetchAdminDashboardStats = async (
       });
     }
     
-    // Build reports query with filters
+    // Build reports query with filters - Admin should see all reports
     let reportsQuery = supabase
       .from('reports')
       .select(`
@@ -70,6 +72,7 @@ export const fetchAdminDashboardStats = async (
       reportsQuery = reportsQuery.eq('engineer_id', filter.engineerId);
     }
     
+    // Apply date filter only if a date range is specified
     if (fromDate && toDate) {
       reportsQuery = reportsQuery
         .gte('date', fromDate)
@@ -135,7 +138,7 @@ export const fetchAdminDashboardStats = async (
       amount
     }));
     
-    // Fetch and analyze incidents for the same period
+    // Fetch and analyze incidents for the same period - Admin should see all incidents
     let incidentsQuery = supabase
       .from('incidents')
       .select(`
@@ -151,6 +154,7 @@ export const fetchAdminDashboardStats = async (
       incidentsQuery = incidentsQuery.eq('engineer_id', filter.engineerId);
     }
     
+    // Apply date filter only if a date range is specified
     if (fromDate && toDate) {
       incidentsQuery = incidentsQuery
         .gte('date', fromDate)
@@ -177,6 +181,7 @@ export const fetchAdminDashboardStats = async (
       count
     }));
     
+    // Get recent reports and incidents for display
     const recentReports = (reports || []).slice(0, 5);
     const recentIncidents = (incidents || []).slice(0, 5);
     

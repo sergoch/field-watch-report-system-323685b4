@@ -16,6 +16,7 @@ import { RecentReportsTable } from '@/components/dashboard/tables/RecentReportsT
 import { RecentIncidentsTable } from '@/components/dashboard/tables/RecentIncidentsTable';
 import { Link } from "react-router-dom";
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from "recharts";
+import { supabase } from "@/integrations/supabase/client";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -57,7 +58,89 @@ export function AdminDashboard() {
     };
 
     fetchStats();
+    
+    // Set up realtime subscriptions to update stats when data changes
+    const reportsChannel = supabase
+      .channel('public:reports')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'reports'
+      }, () => {
+        fetchStats();
+      })
+      .subscribe();
+      
+    const incidentsChannel = supabase
+      .channel('public:incidents')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'incidents'
+      }, () => {
+        fetchStats();
+      })
+      .subscribe();
+      
+    const workersChannel = supabase
+      .channel('public:workers')
+      .on('postgres_changes', {
+        event: '*', 
+        schema: 'public',
+        table: 'workers'
+      }, () => {
+        fetchStats();
+      })
+      .subscribe();
+      
+    const equipmentChannel = supabase
+      .channel('public:equipment')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public', 
+        table: 'equipment'
+      }, () => {
+        fetchStats();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(reportsChannel);
+      supabase.removeChannel(incidentsChannel);
+      supabase.removeChannel(workersChannel);
+      supabase.removeChannel(equipmentChannel);
+    };
   }, [timeFrame, dateRange, regionId, engineerId]);
+
+  const handleCleanTestData = async () => {
+    try {
+      const { error } = await supabase.rpc('clean_test_data');
+      
+      if (error) throw error;
+      
+      setStats({
+        workerCount: 0,
+        equipmentCount: 0,
+        operatorCount: 0,
+        fuelByType: [],
+        incidentsByType: [],
+        recentReports: [],
+        recentIncidents: [],
+        regionsData: stats.regionsData
+      });
+      
+      toast({
+        title: "Test Data Cleaned",
+        description: "All test data has been successfully removed"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error Cleaning Data",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -103,6 +186,13 @@ export function AdminDashboard() {
             <AlertTriangle className="mr-2 h-4 w-4" />
             View Incidents
           </Link>
+        </Button>
+        <Button 
+          variant="outline" 
+          className="bg-red-50 border-red-200 hover:bg-red-100 text-red-700"
+          onClick={handleCleanTestData}
+        >
+          Clean Test Data
         </Button>
       </div>
 

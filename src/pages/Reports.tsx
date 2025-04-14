@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { Report } from "@/types";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 import { DeleteConfirmDialog } from "@/components/crud/DeleteConfirmDialog";
 import { formatDateForQuery } from "@/utils/dashboard/dateUtils";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ReportsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -24,6 +26,8 @@ export default function ReportsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [regionNames, setRegionNames] = useState<Record<string, string>>({});
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const { 
     data: allReports, 
@@ -42,13 +46,21 @@ export default function ReportsPage() {
         regions (
           name
         )
-      `).order('date', { ascending: false });
+      `);
       
+      // If not admin, only show the user's reports
+      if (!isAdmin && user?.id) {
+        query = query.eq('engineer_id', user.id);
+      }
+      
+      // Apply date filtering if available
       if (dateRange?.from && dateRange?.to) {
         const fromDate = formatDateForQuery(dateRange.from);
         const toDate = formatDateForQuery(dateRange.to);
         query = query.gte('date', fromDate).lte('date', toDate);
       }
+      
+      query = query.order('date', { ascending: false });
       
       const { data, error } = await query;
       
@@ -60,7 +72,7 @@ export default function ReportsPage() {
     };
     
     fetchReports();
-  }, [dateRange]);
+  }, [dateRange, user, isAdmin]);
 
   useEffect(() => {
     const fetchRegions = async () => {

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,6 +14,7 @@ import { DeleteConfirmDialog } from "@/components/crud/DeleteConfirmDialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import * as XLSX from 'xlsx';
+import { supabase } from "@/integrations/supabase/client";
 
 export default function EquipmentPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -24,6 +25,7 @@ export default function EquipmentPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [regions, setRegions] = useState<{ id: string, name: string }[]>([]);
   
   const [formData, setFormData] = useState({
     type: '',
@@ -31,7 +33,8 @@ export default function EquipmentPage() {
     operatorName: '',
     operatorId: '',
     dailySalary: 0,
-    fuelType: 'diesel' as 'diesel' | 'gasoline'
+    fuelType: 'diesel' as 'diesel' | 'gasoline',
+    region_id: ''
   });
 
   const { 
@@ -43,6 +46,24 @@ export default function EquipmentPage() {
   } = useSupabaseRealtime<Equipment>({ 
     tableName: 'equipment' 
   });
+
+  useEffect(() => {
+    // Fetch regions for dropdown
+    const fetchRegions = async () => {
+      const { data, error } = await supabase
+        .from('regions')
+        .select('id, name')
+        .order('name');
+        
+      if (error) {
+        console.error('Error fetching regions:', error);
+      } else if (data) {
+        setRegions(data);
+      }
+    };
+    
+    fetchRegions();
+  }, []);
 
   const filteredEquipment = equipmentData.filter(equipment => 
     equipment.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -58,7 +79,8 @@ export default function EquipmentPage() {
       operatorName: equipment.operatorName,
       operatorId: equipment.operatorId,
       dailySalary: equipment.dailySalary,
-      fuelType: equipment.fuelType
+      fuelType: equipment.fuelType,
+      region_id: equipment.region_id || ''
     });
   };
 
@@ -75,7 +97,8 @@ export default function EquipmentPage() {
         operatorName: formData.operatorName,
         operatorId: formData.operatorId,
         dailySalary: formData.dailySalary,
-        fuelType: formData.fuelType
+        fuelType: formData.fuelType,
+        region_id: formData.region_id || null
       });
       
       toast({
@@ -84,10 +107,10 @@ export default function EquipmentPage() {
       });
       
       setEditEquipment(null);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Update Failed",
-        description: "There was an error updating the equipment.",
+        description: error.message || "There was an error updating the equipment.",
         variant: "destructive"
       });
     } finally {
@@ -108,10 +131,10 @@ export default function EquipmentPage() {
       });
       
       setDeleteEquipment(null);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Deletion Failed",
-        description: "There was an error removing the equipment.",
+        description: error.message || "There was an error removing the equipment.",
         variant: "destructive"
       });
     } finally {
@@ -122,7 +145,7 @@ export default function EquipmentPage() {
   const handleCreateNew = async () => {
     if (!validateForm()) return;
     
-    setIsCreating(true);
+    setIsSaving(true);
     try {
       await addEquipment({
         type: formData.type,
@@ -130,7 +153,8 @@ export default function EquipmentPage() {
         operatorName: formData.operatorName,
         operatorId: formData.operatorId,
         dailySalary: formData.dailySalary,
-        fuelType: formData.fuelType
+        fuelType: formData.fuelType,
+        region_id: formData.region_id || null
       });
       
       toast({
@@ -140,13 +164,14 @@ export default function EquipmentPage() {
       
       resetForm();
       setIsCreating(false);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Creation Failed",
-        description: "There was an error adding the equipment.",
+        description: error.message || "There was an error adding the equipment.",
         variant: "destructive"
       });
-      setIsCreating(false);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -201,20 +226,26 @@ export default function EquipmentPage() {
       operatorName: '',
       operatorId: '',
       dailySalary: 0,
-      fuelType: 'diesel'
+      fuelType: 'diesel',
+      region_id: ''
     });
   };
 
   const handleExportToExcel = () => {
     try {
-      const exportData = filteredEquipment.map(equipment => ({
-        "Type": equipment.type,
-        "License Plate": equipment.licensePlate,
-        "Operator Name": equipment.operatorName,
-        "Operator ID": equipment.operatorId,
-        "Fuel Type": equipment.fuelType,
-        "Daily Salary (GEL)": equipment.dailySalary
-      }));
+      const exportData = filteredEquipment.map(equipment => {
+        const region = regions.find(r => r.id === equipment.region_id);
+        
+        return {
+          "Type": equipment.type,
+          "License Plate": equipment.licensePlate,
+          "Operator Name": equipment.operatorName,
+          "Operator ID": equipment.operatorId,
+          "Fuel Type": equipment.fuelType,
+          "Daily Salary (GEL)": equipment.dailySalary,
+          "Region": region?.name || "Unassigned"
+        };
+      });
 
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
@@ -226,10 +257,10 @@ export default function EquipmentPage() {
         title: "Export Successful",
         description: "Equipment data exported to Excel successfully."
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Export Failed",
-        description: "Could not export data to Excel.",
+        description: error.message || "Could not export data to Excel.",
         variant: "destructive"
       });
     }
@@ -285,6 +316,7 @@ export default function EquipmentPage() {
                   <TableHead>Type</TableHead>
                   <TableHead>License Plate</TableHead>
                   <TableHead>Operator</TableHead>
+                  <TableHead>Region</TableHead>
                   <TableHead>Fuel Type</TableHead>
                   <TableHead>Daily Salary (GEL)</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -293,51 +325,56 @@ export default function EquipmentPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                       Loading equipment data...
                     </TableCell>
                   </TableRow>
                 ) : filteredEquipment.length > 0 ? (
-                  filteredEquipment.map((equipment) => (
-                    <TableRow key={equipment.id}>
-                      <TableCell className="font-medium">{equipment.type}</TableCell>
-                      <TableCell>{equipment.licensePlate}</TableCell>
-                      <TableCell>{equipment.operatorName}</TableCell>
-                      <TableCell>{equipment.fuelType}</TableCell>
-                      <TableCell>{equipment.dailySalary}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => setViewEquipment(equipment)}
-                          >
-                            <Eye className="h-4 w-4" />
-                            <span className="sr-only">View</span>
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleOpenEditDialog(equipment)}
-                          >
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Edit</span>
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => setDeleteEquipment(equipment)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                            <span className="sr-only">Delete</span>
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  filteredEquipment.map((equipment) => {
+                    const region = regions.find(r => r.id === equipment.region_id);
+                    
+                    return (
+                      <TableRow key={equipment.id}>
+                        <TableCell className="font-medium">{equipment.type}</TableCell>
+                        <TableCell>{equipment.licensePlate}</TableCell>
+                        <TableCell>{equipment.operatorName}</TableCell>
+                        <TableCell>{region?.name || "Unassigned"}</TableCell>
+                        <TableCell className="capitalize">{equipment.fuelType}</TableCell>
+                        <TableCell>{equipment.dailySalary}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => setViewEquipment(equipment)}
+                            >
+                              <Eye className="h-4 w-4" />
+                              <span className="sr-only">View</span>
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleOpenEditDialog(equipment)}
+                            >
+                              <Edit className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setDeleteEquipment(equipment)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                       No equipment found.
                     </TableCell>
                   </TableRow>
@@ -372,6 +409,10 @@ export default function EquipmentPage() {
               <div>
                 <Label className="font-semibold">Operator ID</Label>
                 <p>{viewEquipment.operatorId}</p>
+              </div>
+              <div>
+                <Label className="font-semibold">Region</Label>
+                <p>{regions.find(r => r.id === viewEquipment.region_id)?.name || "Unassigned"}</p>
               </div>
               <div>
                 <Label className="font-semibold">Fuel Type</Label>
@@ -432,6 +473,25 @@ export default function EquipmentPage() {
             />
           </div>
           <div>
+            <Label htmlFor="region">Region</Label>
+            <Select 
+              value={formData.region_id} 
+              onValueChange={(value) => setFormData({...formData, region_id: value})}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Region" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Unassigned</SelectItem>
+                {regions.map(region => (
+                  <SelectItem key={region.id} value={region.id}>
+                    {region.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label htmlFor="dailySalary">Daily Salary (GEL)</Label>
             <Input
               id="dailySalary"
@@ -465,7 +525,7 @@ export default function EquipmentPage() {
         title="Add New Equipment"
         description="Enter equipment details"
         onSave={handleCreateNew}
-        isSaving={false}
+        isSaving={isSaving}
         saveButtonText="Add Equipment"
       >
         <div className="space-y-4">
@@ -506,6 +566,25 @@ export default function EquipmentPage() {
             />
           </div>
           <div>
+            <Label htmlFor="newRegion">Region</Label>
+            <Select 
+              value={formData.region_id} 
+              onValueChange={(value) => setFormData({...formData, region_id: value})}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Region" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Unassigned</SelectItem>
+                {regions.map(region => (
+                  <SelectItem key={region.id} value={region.id}>
+                    {region.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label htmlFor="newDailySalary">Daily Salary (GEL)</Label>
             <Input
               id="newDailySalary"
@@ -538,7 +617,7 @@ export default function EquipmentPage() {
         onClose={() => setDeleteEquipment(null)}
         onConfirm={handleDelete}
         title="Delete Equipment"
-        description={`Are you sure you want to remove ${deleteEquipment?.type} (${deleteEquipment?.licensePlate}) from the registry? This action cannot be undone.`}
+        description={`Are you sure you want to delete ${deleteEquipment?.type} (${deleteEquipment?.licensePlate})? This action cannot be undone.`}
         isDeleting={isDeleting}
       />
     </div>

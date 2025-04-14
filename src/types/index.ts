@@ -21,6 +21,7 @@ export interface Worker {
   fullName: string;
   personalId: string;
   dailySalary: number;
+  region_id?: string;
   createdAt?: string; // Added createdAt field
 }
 
@@ -32,6 +33,7 @@ export interface Equipment {
   operatorName: string;
   operatorId: string;
   dailySalary: number;
+  region_id?: string;
 }
 
 export interface ReportWorker {
