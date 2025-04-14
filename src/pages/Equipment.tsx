@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Download, Edit, Trash2, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
@@ -19,64 +18,64 @@ import * as XLSX from 'xlsx';
 export default function EquipmentPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
-
   const [viewEquipment, setViewEquipment] = useState<Equipment | null>(null);
   const [editEquipment, setEditEquipment] = useState<Equipment | null>(null);
   const [deleteEquipment, setDeleteEquipment] = useState<Equipment | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
-  // Form state for editing
+  const [isCreating, setIsCreating] = useState(false);
+  
   const [formData, setFormData] = useState({
     type: '',
     licensePlate: '',
-    fuelType: 'diesel' as 'diesel' | 'gasoline',
     operatorName: '',
     operatorId: '',
-    dailySalary: 0
+    dailySalary: 0,
+    fuelType: 'diesel' as 'diesel' | 'gasoline'
   });
 
-  // Use our real-time hook to fetch equipment data
   const { 
-    data: equipmentList, 
+    data: equipmentData, 
     loading, 
+    add: addEquipment,
     update: updateEquipment,
     remove: removeEquipment 
   } = useSupabaseRealtime<Equipment>({ 
     tableName: 'equipment' 
   });
 
-  // Filter equipment based on search query
-  const filteredEquipment = equipmentList.filter(equipment => 
+  const filteredEquipment = equipmentData.filter(equipment => 
     equipment.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
     equipment.licensePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
     equipment.operatorName.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
+  
   const handleOpenEditDialog = (equipment: Equipment) => {
     setEditEquipment(equipment);
     setFormData({
       type: equipment.type,
       licensePlate: equipment.licensePlate,
-      fuelType: equipment.fuelType,
       operatorName: equipment.operatorName,
       operatorId: equipment.operatorId,
-      dailySalary: equipment.dailySalary
+      dailySalary: equipment.dailySalary,
+      fuelType: equipment.fuelType
     });
   };
 
   const handleSaveEdit = async () => {
     if (!editEquipment) return;
 
+    if (!validateForm()) return;
+
     setIsSaving(true);
     try {
       await updateEquipment(editEquipment.id, {
         type: formData.type,
         licensePlate: formData.licensePlate,
-        fuelType: formData.fuelType,
         operatorName: formData.operatorName,
         operatorId: formData.operatorId,
-        dailySalary: formData.dailySalary
+        dailySalary: formData.dailySalary,
+        fuelType: formData.fuelType
       });
       
       toast({
@@ -105,7 +104,7 @@ export default function EquipmentPage() {
       
       toast({
         title: "Equipment Deleted",
-        description: `${deleteEquipment.type} (${deleteEquipment.licensePlate}) has been removed from the registry.`
+        description: `${deleteEquipment.type} (${deleteEquipment.licensePlate}) has been removed.`
       });
       
       setDeleteEquipment(null);
@@ -120,14 +119,100 @@ export default function EquipmentPage() {
     }
   };
 
+  const handleCreateNew = async () => {
+    if (!validateForm()) return;
+    
+    setIsCreating(true);
+    try {
+      await addEquipment({
+        type: formData.type,
+        licensePlate: formData.licensePlate,
+        operatorName: formData.operatorName,
+        operatorId: formData.operatorId,
+        dailySalary: formData.dailySalary,
+        fuelType: formData.fuelType
+      });
+      
+      toast({
+        title: "Equipment Added",
+        description: `${formData.type} (${formData.licensePlate}) has been added successfully.`
+      });
+      
+      resetForm();
+      setIsCreating(false);
+    } catch (error) {
+      toast({
+        title: "Creation Failed",
+        description: "There was an error adding the equipment.",
+        variant: "destructive"
+      });
+      setIsCreating(false);
+    }
+  };
+
+  const validateForm = () => {
+    if (!formData.type) {
+      toast({
+        title: "Validation Error",
+        description: "Equipment type is required",
+        variant: "destructive"
+      });
+      return false;
+    }
+    if (!formData.licensePlate) {
+      toast({
+        title: "Validation Error",
+        description: "License plate is required",
+        variant: "destructive"
+      });
+      return false;
+    }
+    if (!formData.operatorName) {
+      toast({
+        title: "Validation Error",
+        description: "Operator name is required",
+        variant: "destructive"
+      });
+      return false;
+    }
+    if (!formData.operatorId) {
+      toast({
+        title: "Validation Error",
+        description: "Operator ID is required",
+        variant: "destructive"
+      });
+      return false;
+    }
+    if (formData.dailySalary <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Daily salary must be greater than 0",
+        variant: "destructive"
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const resetForm = () => {
+    setFormData({
+      type: '',
+      licensePlate: '',
+      operatorName: '',
+      operatorId: '',
+      dailySalary: 0,
+      fuelType: 'diesel'
+    });
+  };
+
   const handleExportToExcel = () => {
     try {
       const exportData = filteredEquipment.map(equipment => ({
         "Type": equipment.type,
         "License Plate": equipment.licensePlate,
-        "Fuel Type": equipment.fuelType,
-        "Operator": equipment.operatorName,
+        "Operator Name": equipment.operatorName,
         "Operator ID": equipment.operatorId,
+        "Fuel Type": equipment.fuelType,
         "Daily Salary (GEL)": equipment.dailySalary
       }));
 
@@ -158,11 +243,14 @@ export default function EquipmentPage() {
           <p className="text-muted-foreground">Manage construction site equipment</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button asChild>
-            <a href="/equipment/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Equipment
-            </a>
+          <Button 
+            onClick={() => {
+              resetForm();
+              setIsCreating(true);
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Equipment
           </Button>
           <Button 
             variant="outline" 
@@ -196,8 +284,8 @@ export default function EquipmentPage() {
                 <TableRow>
                   <TableHead>Type</TableHead>
                   <TableHead>License Plate</TableHead>
-                  <TableHead>Fuel</TableHead>
                   <TableHead>Operator</TableHead>
+                  <TableHead>Fuel Type</TableHead>
                   <TableHead>Daily Salary (GEL)</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -214,12 +302,8 @@ export default function EquipmentPage() {
                     <TableRow key={equipment.id}>
                       <TableCell className="font-medium">{equipment.type}</TableCell>
                       <TableCell>{equipment.licensePlate}</TableCell>
-                      <TableCell>
-                        <Badge variant={equipment.fuelType === "diesel" ? "outline" : "secondary"}>
-                          {equipment.fuelType}
-                        </Badge>
-                      </TableCell>
                       <TableCell>{equipment.operatorName}</TableCell>
+                      <TableCell>{equipment.fuelType}</TableCell>
                       <TableCell>{equipment.dailySalary}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -264,7 +348,6 @@ export default function EquipmentPage() {
         </CardContent>
       </Card>
 
-      {/* View Equipment Details Dialog */}
       <ViewDetailsDialog 
         isOpen={!!viewEquipment}
         onClose={() => setViewEquipment(null)}
@@ -283,20 +366,16 @@ export default function EquipmentPage() {
                 <p>{viewEquipment.licensePlate}</p>
               </div>
               <div>
-                <Label className="font-semibold">Fuel Type</Label>
-                <p>
-                  <Badge variant={viewEquipment.fuelType === "diesel" ? "outline" : "secondary"}>
-                    {viewEquipment.fuelType}
-                  </Badge>
-                </p>
-              </div>
-              <div>
                 <Label className="font-semibold">Operator Name</Label>
                 <p>{viewEquipment.operatorName}</p>
               </div>
               <div>
                 <Label className="font-semibold">Operator ID</Label>
                 <p>{viewEquipment.operatorId}</p>
+              </div>
+              <div>
+                <Label className="font-semibold">Fuel Type</Label>
+                <p className="capitalize">{viewEquipment.fuelType}</p>
               </div>
               <div>
                 <Label className="font-semibold">Daily Salary</Label>
@@ -307,7 +386,6 @@ export default function EquipmentPage() {
         )}
       </ViewDetailsDialog>
 
-      {/* Edit Equipment Dialog */}
       <EditDialog
         isOpen={!!editEquipment}
         onClose={() => setEditEquipment(null)}
@@ -334,21 +412,6 @@ export default function EquipmentPage() {
               onChange={(e) => setFormData({...formData, licensePlate: e.target.value})}
               className="mt-1"
             />
-          </div>
-          <div>
-            <Label htmlFor="fuelType">Fuel Type</Label>
-            <Select 
-              value={formData.fuelType} 
-              onValueChange={(value) => setFormData({...formData, fuelType: value as 'diesel' | 'gasoline'})}
-            >
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="diesel">Diesel</SelectItem>
-                <SelectItem value="gasoline">Gasoline</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           <div>
             <Label htmlFor="operatorName">Operator Name</Label>
@@ -378,10 +441,98 @@ export default function EquipmentPage() {
               className="mt-1"
             />
           </div>
+          <div>
+            <Label htmlFor="fuelType">Fuel Type</Label>
+            <Select 
+              value={formData.fuelType} 
+              onValueChange={(value) => setFormData({...formData, fuelType: value as 'diesel' | 'gasoline'})}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select fuel type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="diesel">Diesel</SelectItem>
+                <SelectItem value="gasoline">Gasoline</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </EditDialog>
 
-      {/* Delete Equipment Confirmation Dialog */}
+      <EditDialog
+        isOpen={isCreating}
+        onClose={() => setIsCreating(false)}
+        title="Add New Equipment"
+        description="Enter equipment details"
+        onSave={handleCreateNew}
+        isSaving={false}
+        saveButtonText="Add Equipment"
+      >
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="newType">Equipment Type</Label>
+            <Input
+              id="newType"
+              value={formData.type}
+              onChange={(e) => setFormData({...formData, type: e.target.value})}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="newLicensePlate">License Plate</Label>
+            <Input
+              id="newLicensePlate"
+              value={formData.licensePlate}
+              onChange={(e) => setFormData({...formData, licensePlate: e.target.value})}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="newOperatorName">Operator Name</Label>
+            <Input
+              id="newOperatorName"
+              value={formData.operatorName}
+              onChange={(e) => setFormData({...formData, operatorName: e.target.value})}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="newOperatorId">Operator ID</Label>
+            <Input
+              id="newOperatorId"
+              value={formData.operatorId}
+              onChange={(e) => setFormData({...formData, operatorId: e.target.value})}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="newDailySalary">Daily Salary (GEL)</Label>
+            <Input
+              id="newDailySalary"
+              type="number"
+              value={formData.dailySalary}
+              onChange={(e) => setFormData({...formData, dailySalary: Number(e.target.value)})}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="newFuelType">Fuel Type</Label>
+            <Select 
+              value={formData.fuelType} 
+              onValueChange={(value) => setFormData({...formData, fuelType: value as 'diesel' | 'gasoline'})}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select fuel type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="diesel">Diesel</SelectItem>
+                <SelectItem value="gasoline">Gasoline</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </EditDialog>
+
       <DeleteConfirmDialog
         isOpen={!!deleteEquipment}
         onClose={() => setDeleteEquipment(null)}

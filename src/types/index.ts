@@ -58,6 +58,13 @@ export interface Report {
   workers: ReportWorker[];
   equipment: ReportEquipment[];
   region?: Region; // Added region relation
+
+  // Database naming compatibility
+  region_id?: string;
+  materials_used?: string;
+  materials_received?: string;
+  total_fuel?: number;
+  regions?: { name: string };
 }
 
 export type IncidentType = "Cut" | "Parallel" | "Damage" | "Node" | "Hydrant" | "Chamber" | "Other";
@@ -75,7 +82,13 @@ export interface Incident {
   engineerId: string;
   regionId: string;
   region?: Region; // Added region relation
+  
   // Add direct access to location properties for convenience
   latitude?: number;
   longitude?: number;
+  
+  // Database naming compatibility
+  region_id?: string;
+  image_url?: string;
+  regions?: { name: string };
 }

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ export default function WorkersPage() {
   const [deleteWorker, setDeleteWorker] = useState<Worker | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -35,6 +37,7 @@ export default function WorkersPage() {
   const { 
     data: workersData, 
     loading, 
+    add: addWorker,
     update: updateWorker,
     remove: removeWorker 
   } = useSupabaseRealtime<WorkerWithMeta>({ 
@@ -59,6 +62,8 @@ export default function WorkersPage() {
 
   const handleSaveEdit = async () => {
     if (!editWorker) return;
+
+    if (!validateForm()) return;
 
     setIsSaving(true);
     try {
@@ -109,6 +114,71 @@ export default function WorkersPage() {
     }
   };
 
+  const handleCreateNew = async () => {
+    if (!validateForm()) return;
+    
+    setIsSaving(true);
+    try {
+      await addWorker({
+        fullName: formData.fullName,
+        personalId: formData.personalId,
+        dailySalary: formData.dailySalary
+      });
+      
+      toast({
+        title: "Worker Added",
+        description: `${formData.fullName} has been added successfully.`
+      });
+      
+      resetForm();
+      setIsCreating(false);
+    } catch (error) {
+      toast({
+        title: "Creation Failed",
+        description: "There was an error adding the worker.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const validateForm = () => {
+    if (!formData.fullName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Worker's full name is required",
+        variant: "destructive"
+      });
+      return false;
+    }
+    if (!formData.personalId.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Worker's personal ID is required",
+        variant: "destructive"
+      });
+      return false;
+    }
+    if (formData.dailySalary <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Daily salary must be greater than zero",
+        variant: "destructive"
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const resetForm = () => {
+    setFormData({
+      fullName: '',
+      personalId: '',
+      dailySalary: 0
+    });
+  };
+
   const handleExportToExcel = () => {
     try {
       const exportData = filteredWorkers.map(worker => ({
@@ -144,11 +214,12 @@ export default function WorkersPage() {
           <p className="text-muted-foreground">Manage construction site workers</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button asChild>
-            <a href="/workers/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Worker
-            </a>
+          <Button onClick={() => {
+            resetForm();
+            setIsCreating(true);
+          }}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Worker
           </Button>
           <Button 
             variant="outline" 
@@ -263,10 +334,12 @@ export default function WorkersPage() {
                 <Label className="font-semibold">Daily Salary</Label>
                 <p>{viewWorker.dailySalary} GEL</p>
               </div>
-              <div>
-                <Label className="font-semibold">Created At</Label>
-                <p>{new Date(viewWorker.createdAt || Date.now()).toLocaleDateString()}</p>
-              </div>
+              {viewWorker?.createdAt && (
+                <div>
+                  <Label className="font-semibold">Created At</Label>
+                  <p>{new Date(viewWorker.createdAt).toLocaleDateString()}</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -303,6 +376,47 @@ export default function WorkersPage() {
             <Label htmlFor="dailySalary">Daily Salary (GEL)</Label>
             <Input
               id="dailySalary"
+              type="number"
+              value={formData.dailySalary}
+              onChange={(e) => setFormData({...formData, dailySalary: Number(e.target.value)})}
+              className="mt-1"
+            />
+          </div>
+        </div>
+      </EditDialog>
+
+      <EditDialog
+        isOpen={isCreating}
+        onClose={() => setIsCreating(false)}
+        title="Add New Worker"
+        description="Enter worker details"
+        onSave={handleCreateNew}
+        isSaving={isSaving}
+        saveButtonText="Add Worker"
+      >
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="newFullName">Full Name</Label>
+            <Input
+              id="newFullName"
+              value={formData.fullName}
+              onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="newPersonalId">Personal ID</Label>
+            <Input
+              id="newPersonalId"
+              value={formData.personalId}
+              onChange={(e) => setFormData({...formData, personalId: e.target.value})}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="newDailySalary">Daily Salary (GEL)</Label>
+            <Input
+              id="newDailySalary"
               type="number"
               value={formData.dailySalary}
               onChange={(e) => setFormData({...formData, dailySalary: Number(e.target.value)})}

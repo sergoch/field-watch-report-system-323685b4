@@ -1,23 +1,20 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Truck, AlertTriangle, FileText, BarChart3 } from "lucide-react";
-import { DatePickerWithRange } from "@/components/datepicker/DateRangePicker";
+import { Users, Truck, AlertTriangle, FileText, BarChart3, ListFilter, Briefcase, Tractor } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { 
   AdminDashboardStats, 
   fetchAdminDashboardStats, 
   TimeFrame 
 } from "@/utils/dashboard";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
+import { DashboardFilters } from '@/components/dashboard/filters/DashboardFilters';
+import { StatsCard } from '@/components/dashboard/stats/StatsCard';
+import { RecentReportsTable } from '@/components/dashboard/tables/RecentReportsTable';
+import { RecentIncidentsTable } from '@/components/dashboard/tables/RecentIncidentsTable';
+import { Link } from "react-router-dom";
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from "recharts";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
@@ -62,13 +59,6 @@ export function AdminDashboard() {
     fetchStats();
   }, [timeFrame, dateRange, regionId, engineerId]);
 
-  const handleTimeFrameChange = (value: TimeFrame) => {
-    setTimeFrame(value);
-    if (value !== "custom") {
-      setDateRange(undefined);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -79,41 +69,44 @@ export function AdminDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-4">
-          <Tabs defaultValue={timeFrame} onValueChange={(v) => handleTimeFrameChange(v as TimeFrame)}>
-            <TabsList>
-              <TabsTrigger value="day">Day</TabsTrigger>
-              <TabsTrigger value="week">Week</TabsTrigger>
-              <TabsTrigger value="month">Month</TabsTrigger>
-              <TabsTrigger value="custom">Custom</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          
-          <DatePickerWithRange 
-            dateRange={dateRange} 
-            setDateRange={(range) => {
-              setDateRange(range);
-              if (range) {
-                setTimeFrame("custom");
-              }
-            }}
+          <DashboardFilters
+            timeFrame={timeFrame}
+            dateRange={dateRange}
+            onTimeFrameChange={setTimeFrame}
+            onDateRangeChange={setDateRange}
           />
-          
-          <Select value={regionId} onValueChange={setRegionId}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="All Regions" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={undefined}>All Regions</SelectItem>
-              {stats.regionsData.map(region => (
-                <SelectItem key={region.id} value={region.id}>
-                  {region.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
+      {/* Quick Access Buttons */}
+      <div className="flex flex-wrap gap-3">
+        <Button asChild variant="secondary" className="bg-sky-50 hover:bg-sky-100 text-sky-700">
+          <Link to="/workers">
+            <Briefcase className="mr-2 h-4 w-4" />
+            Manage Workers
+          </Link>
+        </Button>
+        <Button asChild variant="secondary" className="bg-sky-50 hover:bg-sky-100 text-sky-700">
+          <Link to="/equipment">
+            <Tractor className="mr-2 h-4 w-4" />
+            Manage Equipment
+          </Link>
+        </Button>
+        <Button asChild variant="secondary" className="bg-sky-50 hover:bg-sky-100 text-sky-700">
+          <Link to="/reports">
+            <FileText className="mr-2 h-4 w-4" />
+            View Reports
+          </Link>
+        </Button>
+        <Button asChild variant="secondary" className="bg-sky-50 hover:bg-sky-100 text-sky-700">
+          <Link to="/incidents">
+            <AlertTriangle className="mr-2 h-4 w-4" />
+            View Incidents
+          </Link>
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Workers"
@@ -142,13 +135,14 @@ export function AdminDashboard() {
         <StatsCard
           title="Incidents"
           value={stats.incidentsByType.reduce((acc, item) => acc + item.count, 0)}
-          description="Total incidents"
+          description={`For ${timeFrame === 'day' ? 'today' : timeFrame === 'week' ? 'this week' : 'this month'}`}
           icon={AlertTriangle}
           href="/incidents"
           iconColor="text-orange-500"
         />
       </div>
 
+      {/* Charts */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -156,7 +150,11 @@ export function AdminDashboard() {
             <CardDescription>Liters consumed per fuel type</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
-            {stats.fuelByType.length > 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                Loading fuel data...
+              </div>
+            ) : stats.fuelByType.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -180,7 +178,7 @@ export function AdminDashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                No fuel data available
+                No fuel data available for the selected period
               </div>
             )}
           </CardContent>
@@ -189,10 +187,20 @@ export function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Incidents by Type</CardTitle>
-            <CardDescription>Incident breakdown by category</CardDescription>
+            <CardDescription>
+              Incident breakdown for{' '}
+              {timeFrame === 'day' ? 'today' : 
+               timeFrame === 'week' ? 'this week' : 
+               timeFrame === 'month' ? 'this month' : 
+               'selected period'}
+            </CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
-            {stats.incidentsByType.length > 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                Loading incidents data...
+              </div>
+            ) : stats.incidentsByType.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={stats.incidentsByType}
@@ -207,97 +215,27 @@ export function AdminDashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                No incidents data available
+                No incidents data available for the selected period
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
+      {/* Recent Activities */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Reports</CardTitle>
-            <CardDescription>Latest submitted reports</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {stats.recentReports.map(report => (
-                <div key={report.id} className="flex justify-between py-2 border-b">
-                  <span>Report for {report.regions?.name}</span>
-                  <span className="text-muted-foreground">
-                    {new Date(report.date).toLocaleDateString()}
-                  </span>
-                </div>
-              ))}
-              {stats.recentReports.length === 0 && (
-                <p className="text-muted-foreground">No recent reports</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Incidents</CardTitle>
-            <CardDescription>Latest reported incidents</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {stats.recentIncidents.map(incident => (
-                <div key={incident.id} className="flex justify-between py-2 border-b">
-                  <span>{incident.type} - {incident.regions?.name}</span>
-                  <span className="text-muted-foreground">
-                    {new Date(incident.date).toLocaleDateString()}
-                  </span>
-                </div>
-              ))}
-              {stats.recentIncidents.length === 0 && (
-                <p className="text-muted-foreground">No recent incidents</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <RecentReportsTable reports={stats.recentReports} />
+        <RecentIncidentsTable incidents={stats.recentIncidents} />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">
         <Button asChild>
-          <a href="/analytics">
+          <Link to="/analytics">
             <BarChart3 className="mr-2 h-4 w-4" />
             View Detailed Analytics
-          </a>
+          </Link>
         </Button>
       </div>
     </div>
-  );
-}
-
-interface StatsCardProps {
-  title: string;
-  value: number;
-  description: string;
-  icon: React.ElementType;
-  href: string;
-  iconColor: string;
-}
-
-function StatsCard({ title, value, description, icon: Icon, href, iconColor }: StatsCardProps) {
-  return (
-    <Card className="shadow-sm border-sky-100 hover:shadow-md transition-shadow">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className={`h-4 w-4 ${iconColor}`} />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        <p className="text-xs text-muted-foreground">{description}</p>
-        <a 
-          href={href}
-          className="text-xs text-sky-600 hover:underline mt-2 block"
-        >
-          View details →
-        </a>
-      </CardContent>
-    </Card>
   );
 }

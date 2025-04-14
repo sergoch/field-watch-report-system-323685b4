@@ -5,6 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { EditDialog } from "@/components/crud/EditDialog";
+import { DeleteConfirmDialog } from "@/components/crud/DeleteConfirmDialog";
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
+import { Region } from '@/types';
+import { Edit, Trash2 } from 'lucide-react';
 
 type FieldLabels = {
   workers: string;
@@ -25,12 +30,25 @@ export default function SettingsPage() {
     reports: 'Reports'
   });
 
-  const [regions, setRegions] = useState<{id: string, name: string}[]>([]);
   const [newRegion, setNewRegion] = useState('');
+  const [editRegion, setEditRegion] = useState<Region | null>(null);
+  const [deleteRegion, setDeleteRegion] = useState<Region | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [editRegionName, setEditRegionName] = useState('');
+
+  const { 
+    data: regions, 
+    add: addRegion, 
+    update: updateRegion, 
+    remove: deleteRegionById,
+    refetch: refetchRegions 
+  } = useSupabaseRealtime<Region>({
+    tableName: 'regions'
+  });
 
   useEffect(() => {
     fetchSettings();
-    fetchRegions();
   }, []);
 
   const fetchSettings = async () => {
@@ -42,16 +60,6 @@ export default function SettingsPage() {
 
     if (data) {
       setFieldLabels(data.value);
-    }
-  };
-
-  const fetchRegions = async () => {
-    const { data, error } = await supabase
-      .from('regions')
-      .select('*');
-
-    if (data) {
-      setRegions(data);
     }
   };
 
@@ -75,45 +83,88 @@ export default function SettingsPage() {
     }
   };
 
-  const addRegion = async () => {
-    const { error } = await supabase
-      .from('regions')
-      .insert({ name: newRegion });
+  const handleAddRegion = async () => {
+    if (!newRegion.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Region name cannot be empty",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    if (error) {
+    try {
+      await addRegion({ name: newRegion });
+      
+      toast({
+        title: "Region Added",
+        description: `Region "${newRegion}" has been created`
+      });
+      
+      setNewRegion('');
+    } catch (error: any) {
       toast({
         title: "Error adding region",
         description: error.message,
         variant: "destructive"
       });
-    } else {
-      toast({
-        title: "Region Added",
-        description: `Region "${newRegion}" has been created`
-      });
-      setNewRegion('');
-      fetchRegions();
     }
   };
 
-  const deleteRegion = async (id: string) => {
-    const { error } = await supabase
-      .from('regions')
-      .delete()
-      .eq('id', id);
+  const handleUpdateRegion = async () => {
+    if (!editRegion) return;
+    
+    if (!editRegionName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Region name cannot be empty",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsEditing(true);
+    try {
+      await updateRegion(editRegion.id, { name: editRegionName });
+      
+      toast({
+        title: "Region Updated",
+        description: `Region has been renamed to "${editRegionName}"`
+      });
+      
+      setEditRegion(null);
+    } catch (error: any) {
+      toast({
+        title: "Error updating region",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsEditing(false);
+    }
+  };
 
-    if (error) {
+  const handleDeleteRegion = async () => {
+    if (!deleteRegion) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteRegionById(deleteRegion.id);
+      
+      toast({
+        title: "Region Deleted",
+        description: `Region "${deleteRegion.name}" has been removed`
+      });
+      
+      setDeleteRegion(null);
+    } catch (error: any) {
       toast({
         title: "Error deleting region",
         description: error.message,
         variant: "destructive"
       });
-    } else {
-      toast({
-        title: "Region Deleted",
-        description: "The selected region has been removed"
-      });
-      fetchRegions();
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -161,27 +212,74 @@ export default function SettingsPage() {
               value={newRegion}
               onChange={(e) => setNewRegion(e.target.value)}
             />
-            <Button onClick={addRegion}>Add Region</Button>
+            <Button onClick={handleAddRegion}>Add Region</Button>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {regions.map(region => (
               <div 
                 key={region.id} 
                 className="flex justify-between items-center p-3 border rounded"
               >
                 <span>{region.name}</span>
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={() => deleteRegion(region.id)}
-                >
-                  Delete
-                </Button>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      setEditRegion(region);
+                      setEditRegionName(region.name);
+                    }}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => setDeleteRegion(region)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             ))}
+            {regions.length === 0 && (
+              <div className="col-span-2 text-center p-4 text-muted-foreground">
+                No regions found. Add a region to get started.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      <EditDialog
+        isOpen={!!editRegion}
+        onClose={() => setEditRegion(null)}
+        title="Edit Region"
+        description="Update region name"
+        onSave={handleUpdateRegion}
+        isSaving={isEditing}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Region Name
+            </label>
+            <Input
+              value={editRegionName}
+              onChange={(e) => setEditRegionName(e.target.value)}
+            />
+          </div>
+        </div>
+      </EditDialog>
+
+      <DeleteConfirmDialog
+        isOpen={!!deleteRegion}
+        onClose={() => setDeleteRegion(null)}
+        onConfirm={handleDeleteRegion}
+        title="Delete Region"
+        description={`Are you sure you want to delete the region "${deleteRegion?.name}"? This action cannot be undone and may affect reports and incidents assigned to this region.`}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }
