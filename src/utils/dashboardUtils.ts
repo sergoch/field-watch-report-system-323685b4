@@ -367,11 +367,14 @@ export const fetchAdminDashboardStats = async (
     
     // Calculate incidents by type
     const incidentMap = new Map<string, number>();
-    incidents?.forEach(incident => {
-      const type = incident.type;
-      const currentCount = incidentMap.get(type) || 0;
-      incidentMap.set(type, currentCount + 1);
-    });
+    
+    if (incidents) {
+      incidents.forEach(incident => {
+        const type = incident.type;
+        const currentCount = incidentMap.get(type) || 0;
+        incidentMap.set(type, currentCount + 1);
+      });
+    }
     
     const incidentsByType = Array.from(incidentMap.entries()).map(([type, count]) => ({
       type,
