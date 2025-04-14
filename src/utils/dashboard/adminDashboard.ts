@@ -84,7 +84,9 @@ export const fetchAdminDashboardStats = async (
     if (reportEquipmentData) {
       reportEquipmentData.forEach(item => {
         if (item.equipment && typeof item.equipment === 'object' && 'fuel_type' in item.equipment) {
-          const fuelType = item.equipment.fuel_type as string;
+          // Cast the equipment object properly to access its properties
+          const equip = item.equipment as unknown as { fuel_type: string };
+          const fuelType = equip.fuel_type;
           const currentAmount = fuelMap.get(fuelType) || 0;
           fuelMap.set(fuelType, currentAmount + (item.fuel_amount || 0));
         }

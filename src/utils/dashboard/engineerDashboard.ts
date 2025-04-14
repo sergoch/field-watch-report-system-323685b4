@@ -94,12 +94,12 @@ export const fetchEngineerDashboardStats = async (
           const workerId = rw.workers.id as string;
           if (!workersSet.has(workerId)) {
             workersSet.add(workerId);
-            const fullName = rw.workers.full_name as string || '';
-            const personalId = rw.workers.personal_id as string || '';
+            // Cast the workers object properly to access its properties
+            const worker = rw.workers as unknown as { id: string; full_name: string; personal_id: string };
             workers.push({
               id: workerId,
-              fullName: fullName,
-              personalId: personalId
+              fullName: worker.full_name || '',
+              personalId: worker.personal_id || ''
             });
           }
         }
@@ -127,12 +127,12 @@ export const fetchEngineerDashboardStats = async (
           const equipId = re.equipment.id as string;
           if (!equipmentSet.has(equipId)) {
             equipmentSet.add(equipId);
-            const equipType = re.equipment.type as string || '';
-            const licensePlate = re.equipment.license_plate as string || '';
+            // Cast the equipment object properly to access its properties
+            const equip = re.equipment as unknown as { id: string; type: string; license_plate: string; operator_id: string };
             equipment.push({
               id: equipId,
-              type: equipType,
-              licensePlate: licensePlate
+              type: equip.type || '',
+              licensePlate: equip.license_plate || ''
             });
           }
         }
@@ -144,7 +144,9 @@ export const fetchEngineerDashboardStats = async (
     if (reportEquipmentData) {
       reportEquipmentData.forEach(re => {
         if (re.equipment && typeof re.equipment === 'object' && 'operator_id' in re.equipment) {
-          const operatorId = re.equipment.operator_id as string;
+          // Cast the equipment object properly to access its properties
+          const equip = re.equipment as unknown as { operator_id: string };
+          const operatorId = equip.operator_id;
           if (operatorId) {
             operatorIds.add(operatorId);
           }
