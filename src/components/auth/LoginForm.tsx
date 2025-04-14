@@ -7,19 +7,21 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function LoginForm() {
-  const [identifier, setIdentifier] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { login, error } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!identifier || !password) {
+    if (!username || !password) {
       toast({
         title: "Error",
         description: "Please enter both username and password",
@@ -30,17 +32,13 @@ export function LoginForm() {
 
     try {
       setIsSubmitting(true);
-      await login(identifier, password);
+      await login(username, password);
       
       // If login successful, navigate to dashboard
       navigate('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
-      toast({
-        title: "Login Failed",
-        description: "Invalid username or password. Please try again.",
-        variant: "destructive",
-      });
+      // Error is now handled in the context
     } finally {
       setIsSubmitting(false);
     }
@@ -53,14 +51,20 @@ export function LoginForm() {
         <CardDescription className="text-center">Field Control & Incident Reporting System</CardDescription>
       </CardHeader>
       <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="identifier">Username</Label>
+            <Label htmlFor="username">Username</Label>
             <Input
-              id="identifier"
+              id="username"
               placeholder="Enter your username"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
             />
           </div>

@@ -5,8 +5,9 @@ import { User } from '@/types';
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  error: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -14,6 +15,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if user is already logged in via local storage
@@ -29,16 +31,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkLoginStatus();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
+      setError(null);
       // This is a mock implementation - will be replaced with Supabase auth
       // For demo purposes, we're simulating different user roles with default credentials
       
       let mockUser: User;
       
       // Check for default admin (sergo)
-      if (email.toLowerCase() === 'sergo' && password === '599410902') {
+      if (username.toLowerCase() === 'sergo' && password === '599410902') {
         mockUser = {
           id: '1',
           name: 'Sergo',
@@ -47,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       } 
       // Check for default engineer (keda)
-      else if (email.toLowerCase() === 'keda' && password === 'keda') {
+      else if (username.toLowerCase() === 'keda' && password === 'keda') {
         mockUser = {
           id: '2',
           name: 'Keda',
@@ -57,11 +60,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
       // Check for admin email
-      else if (email.includes('admin')) {
+      else if (username.includes('admin')) {
         mockUser = {
           id: '3',
           name: 'Admin User',
-          email,
+          email: `${username}@amradzi.com`,
           role: 'admin',
         };
       } 
@@ -70,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         mockUser = {
           id: '4',
           name: 'Engineer User',
-          email,
+          email: `${username}@amradzi.com`,
           role: 'engineer',
           regionId: '1',
         };
@@ -81,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(mockUser);
     } catch (error) {
       console.error('Login error:', error);
+      setError('Login failed. Please check your credentials and try again.');
       throw error;
     } finally {
       setIsLoading(false);
@@ -99,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, error }}>
       {children}
     </AuthContext.Provider>
   );
