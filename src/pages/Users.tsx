@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -133,55 +134,6 @@ export default function UsersManagementPage() {
       });
     } finally {
       setIsEditing(false);
-    }
-  };
-
-  const handleCreateUser = async () => {
-    if (!newUser.email || !newUser.password || !newUser.name) {
-      toast({
-        title: "Validation Error",
-        description: "Email, name and password are required",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsCreatingUser(true);
-    
-    try {
-      const { data, error } = await supabase.auth.admin.createUser({
-        email: newUser.email,
-        password: newUser.password,
-        email_confirm: true,
-        user_metadata: {
-          name: newUser.name,
-          role: newUser.role,
-          region_id: newUser.region_id || null
-        }
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "User Created",
-        description: `${newUser.name} (${newUser.email}) has been added successfully`
-      });
-      
-      fetchUsers();
-      
-      setNewUser({ email: '', name: '', password: '', region_id: '', role: 'engineer' });
-      setIsCreating(false);
-      
-    } catch (error: any) {
-      toast({
-        title: "Error creating user",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsCreatingUser(false);
     }
   };
 
