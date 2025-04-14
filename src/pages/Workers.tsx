@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +13,10 @@ import { DeleteConfirmDialog } from "@/components/crud/DeleteConfirmDialog";
 import { Label } from "@/components/ui/label";
 import * as XLSX from 'xlsx';
 
+interface WorkerWithMeta extends Worker {
+  createdAt?: string;
+}
+
 export default function WorkersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
@@ -23,24 +26,23 @@ export default function WorkersPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Form state for editing
   const [formData, setFormData] = useState({
     fullName: '',
     personalId: '',
     dailySalary: 0
   });
 
-  // Use our real-time hook to fetch workers data
   const { 
-    data: workers, 
+    data: workersData, 
     loading, 
     update: updateWorker,
     remove: removeWorker 
-  } = useSupabaseRealtime<Worker>({ 
+  } = useSupabaseRealtime<WorkerWithMeta>({ 
     tableName: 'workers' 
   });
 
-  // Filter workers based on search query
+  const workers = workersData;
+
   const filteredWorkers = workers.filter(worker => 
     worker.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     worker.personalId.includes(searchQuery)
@@ -109,19 +111,16 @@ export default function WorkersPage() {
 
   const handleExportToExcel = () => {
     try {
-      // Prepare data for export
       const exportData = filteredWorkers.map(worker => ({
         "Full Name": worker.fullName,
         "Personal ID": worker.personalId,
         "Daily Salary (GEL)": worker.dailySalary
       }));
 
-      // Create worksheet
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Workers");
       
-      // Save file
       XLSX.writeFile(workbook, `amradzi_workers_${new Date().toISOString().split('T')[0]}.xlsx`);
       
       toast({
@@ -243,7 +242,6 @@ export default function WorkersPage() {
         </CardContent>
       </Card>
 
-      {/* View Worker Details Dialog */}
       <ViewDetailsDialog 
         isOpen={!!viewWorker}
         onClose={() => setViewWorker(null)}
@@ -267,14 +265,13 @@ export default function WorkersPage() {
               </div>
               <div>
                 <Label className="font-semibold">Created At</Label>
-                <p>{new Date(viewWorker.created_at || Date.now()).toLocaleDateString()}</p>
+                <p>{new Date(viewWorker.createdAt || Date.now()).toLocaleDateString()}</p>
               </div>
             </div>
           </div>
         )}
       </ViewDetailsDialog>
 
-      {/* Edit Worker Dialog */}
       <EditDialog
         isOpen={!!editWorker}
         onClose={() => setEditWorker(null)}
@@ -315,7 +312,6 @@ export default function WorkersPage() {
         </div>
       </EditDialog>
 
-      {/* Delete Worker Confirmation Dialog */}
       <DeleteConfirmDialog
         isOpen={!!deleteWorker}
         onClose={() => setDeleteWorker(null)}

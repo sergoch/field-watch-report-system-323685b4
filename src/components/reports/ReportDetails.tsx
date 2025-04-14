@@ -5,16 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-interface Report {
-  id: string;
-  date: string;
-  region: string;
-  workers: number;
-  equipment: number;
-  fuel: number;
-  materials: string;
-}
+import { Report } from "@/types";
 
 interface ReportDetailsProps {
   report: Report | null;
@@ -34,11 +25,11 @@ export function ReportDetails({ report, onClose }: ReportDetailsProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <h3 className="font-semibold">Date</h3>
-              <p>{report.date}</p>
+              <p>{new Date(report.date).toLocaleDateString()}</p>
             </div>
             <div>
               <h3 className="font-semibold">Region</h3>
-              <p>{report.region}</p>
+              <p>{report.regions?.name}</p>
             </div>
           </div>
           <div>
@@ -46,21 +37,21 @@ export function ReportDetails({ report, onClose }: ReportDetailsProps) {
             <div className="grid grid-cols-3 gap-4 mt-2">
               <div>
                 <span className="text-muted-foreground">Workers:</span>
-                <p className="text-lg">{report.workers}</p>
+                <p className="text-lg">{report.workers ? report.workers.length : 0}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Equipment:</span>
-                <p className="text-lg">{report.equipment}</p>
+                <p className="text-lg">{report.equipment ? report.equipment.length : 0}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Fuel Used:</span>
-                <p className="text-lg">{report.fuel}L</p>
+                <p className="text-lg">{report.totalFuel}L</p>
               </div>
             </div>
           </div>
           <div>
             <h3 className="font-semibold">Materials</h3>
-            <p className="mt-1">{report.materials}</p>
+            <p className="mt-1">{report.materialsUsed}</p>
           </div>
         </div>
       </DialogContent>

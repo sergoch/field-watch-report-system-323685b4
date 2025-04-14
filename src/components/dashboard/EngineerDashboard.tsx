@@ -72,7 +72,7 @@ export function EngineerDashboard() {
           .lte('date', toDate);
 
         // Fetch recent reports
-        const { data: recentReports } = await supabase
+        const { data: recentReportsData } = await supabase
           .from('reports')
           .select(`
             *,
@@ -87,7 +87,7 @@ export function EngineerDashboard() {
           .limit(5);
           
         // Fetch recent incidents
-        const { data: recentIncidents } = await supabase
+        const { data: recentIncidentsData } = await supabase
           .from('incidents')
           .select(`
             *,
@@ -101,8 +101,39 @@ export function EngineerDashboard() {
           .order('date', { ascending: false })
           .limit(5);
 
+        // Transform data from snake_case to camelCase
+        const recentReports = recentReportsData ? recentReportsData.map(report => ({
+          ...report,
+          id: report.id,
+          date: report.date,
+          description: report.description,
+          regionId: report.region_id,
+          engineerId: report.engineer_id,
+          materialsUsed: report.materials_used,
+          materialsReceived: report.materials_received,
+          totalFuel: report.total_fuel,
+          totalWorkerSalary: report.total_worker_salary,
+          regions: report.regions
+        })) : [];
+
+        const recentIncidents = recentIncidentsData ? recentIncidentsData.map(incident => ({
+          ...incident,
+          id: incident.id,
+          date: incident.date,
+          type: incident.type,
+          imageUrl: incident.image_url,
+          description: incident.description,
+          engineerId: incident.engineer_id,
+          regionId: incident.region_id,
+          location: {
+            latitude: incident.latitude,
+            longitude: incident.longitude
+          },
+          regions: incident.regions
+        })) : [];
+
         // Get all report IDs to fetch related data
-        const reportIds = (recentReports || []).map(report => report.id);
+        const reportIds = recentReports.map(report => report.id);
 
         // Fetch workers data
         const { data: reportWorkersData } = await supabase
@@ -193,8 +224,8 @@ export function EngineerDashboard() {
           totalEquipment: equipment,
           totalOperators: operatorIds.size,
           totalFuel,
-          recentReports: recentReports || [],
-          recentIncidents: recentIncidents || []
+          recentReports: recentReports,
+          recentIncidents: recentIncidents
         });
       } catch (error) {
         console.error('Error fetching engineer dashboard stats:', error);
@@ -249,7 +280,7 @@ export function EngineerDashboard() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-sky-900">Welcome, {user?.name}</h1>
           <p className="text-muted-foreground">
-            Engineer Dashboard - {user?.region || 'All Regions'}
+            Engineer Dashboard - {user?.regionId ? 'Assigned Region' : 'All Regions'}
           </p>
         </div>
         <DashboardFilters

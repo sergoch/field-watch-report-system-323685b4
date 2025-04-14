@@ -10,10 +10,34 @@ interface UseRealtimeOptions {
   schema?: string;
   filter?: string;
   initialFetch?: boolean;
+  transformFn?: (data: any) => any; // Add transform function to convert snake_case to camelCase
 }
 
+// Helper function to convert snake_case to camelCase
+const snakeToCamel = (obj: any): any => {
+  if (obj === null || typeof obj !== 'object') return obj;
+  
+  if (Array.isArray(obj)) {
+    return obj.map(snakeToCamel);
+  }
+  
+  return Object.keys(obj).reduce((acc, key) => {
+    const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    acc[camelKey] = snakeToCamel(obj[key]);
+    return acc;
+  }, {} as any);
+};
+
 export function useSupabaseRealtime<T = any>(options: UseRealtimeOptions) {
-  const { tableName, events = ['INSERT', 'UPDATE', 'DELETE'], schema = 'public', filter, initialFetch = true } = options;
+  const { 
+    tableName, 
+    events = ['INSERT', 'UPDATE', 'DELETE'], 
+    schema = 'public', 
+    filter, 
+    initialFetch = true,
+    transformFn = snakeToCamel 
+  } = options;
+  
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(initialFetch);
   const [error, setError] = useState<Error | null>(null);
@@ -74,7 +98,10 @@ export function useSupabaseRealtime<T = any>(options: UseRealtimeOptions) {
       const { data, error } = await query;
       
       if (error) throw error;
-      setData(data || []);
+      
+      // Transform data (convert snake_case to camelCase)
+      const transformedData = transformFn ? data.map(transformFn) : data;
+      setData(transformedData || []);
     } catch (error) {
       console.error(`Error fetching ${tableName}:`, error);
       setError(error as Error);
@@ -91,7 +118,7 @@ export function useSupabaseRealtime<T = any>(options: UseRealtimeOptions) {
         .select();
       
       if (error) throw error;
-      return data;
+      return transformFn ? transformFn(data[0]) : data[0];
     } catch (error) {
       console.error(`Error adding ${tableName}:`, error);
       throw error;
@@ -100,14 +127,21 @@ export function useSupabaseRealtime<T = any>(options: UseRealtimeOptions) {
 
   const updateData = async (id: string, updates: Partial<T>) => {
     try {
+      // Convert camelCase to snake_case for update operations
+      const snakeUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
+        const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+        acc[snakeKey] = value;
+        return acc;
+      }, {} as any);
+      
       const { data, error } = await supabase
         .from(tableName)
-        .update(updates)
+        .update(snakeUpdates)
         .eq('id', id)
         .select();
       
       if (error) throw error;
-      return data;
+      return transformFn ? transformFn(data[0]) : data[0];
     } catch (error) {
       console.error(`Error updating ${tableName}:`, error);
       throw error;
