@@ -9,7 +9,262 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      equipment: {
+        Row: {
+          created_at: string | null
+          daily_salary: number
+          fuel_type: string
+          id: string
+          license_plate: string
+          operator_id: string
+          operator_name: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          daily_salary: number
+          fuel_type: string
+          id?: string
+          license_plate: string
+          operator_id: string
+          operator_name: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          daily_salary?: number
+          fuel_type?: string
+          id?: string
+          license_plate?: string
+          operator_id?: string
+          operator_name?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      incidents: {
+        Row: {
+          created_at: string | null
+          date: string | null
+          description: string | null
+          engineer_id: string
+          id: string
+          image_url: string | null
+          latitude: number | null
+          longitude: number | null
+          region_id: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string | null
+          description?: string | null
+          engineer_id: string
+          id?: string
+          image_url?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          region_id?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string | null
+          description?: string | null
+          engineer_id?: string
+          id?: string
+          image_url?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          region_id?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidents_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      regions: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      report_equipment: {
+        Row: {
+          created_at: string | null
+          equipment_id: string | null
+          fuel_amount: number
+          id: string
+          report_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          equipment_id?: string | null
+          fuel_amount?: number
+          id?: string
+          report_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          equipment_id?: string | null
+          fuel_amount?: number
+          id?: string
+          report_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_equipment_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_equipment_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_workers: {
+        Row: {
+          created_at: string | null
+          id: string
+          report_id: string | null
+          worker_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          report_id?: string | null
+          worker_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          report_id?: string | null
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_workers_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_workers_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          created_at: string | null
+          date: string
+          description: string | null
+          engineer_id: string
+          id: string
+          materials_received: string | null
+          materials_used: string | null
+          region_id: string | null
+          total_fuel: number | null
+          total_worker_salary: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          engineer_id: string
+          id?: string
+          materials_received?: string | null
+          materials_used?: string | null
+          region_id?: string | null
+          total_fuel?: number | null
+          total_worker_salary?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          engineer_id?: string
+          id?: string
+          materials_received?: string | null
+          materials_used?: string | null
+          region_id?: string | null
+          total_fuel?: number | null
+          total_worker_salary?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workers: {
+        Row: {
+          created_at: string | null
+          daily_salary: number
+          full_name: string
+          id: string
+          personal_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          daily_salary: number
+          full_name: string
+          id?: string
+          personal_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          daily_salary?: number
+          full_name?: string
+          id?: string
+          personal_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
