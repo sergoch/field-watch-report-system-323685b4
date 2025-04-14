@@ -1,17 +1,16 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Download, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Search, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 import { Equipment } from "@/types";
-import { ViewDetailsDialog } from "@/components/crud/ViewDetailsDialog";
-import { EditDialog } from "@/components/crud/EditDialog";
-import { DeleteConfirmDialog } from "@/components/crud/DeleteConfirmDialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EquipmentTable } from "@/components/equipment/EquipmentTable";
+import { EditEquipmentDialog } from "@/components/equipment/EditEquipmentDialog";
+import { DeleteEquipmentDialog } from "@/components/equipment/DeleteEquipmentDialog";
+import { ViewEquipmentDialog } from "@/components/equipment/ViewEquipmentDialog";
 import * as XLSX from 'xlsx';
 import { supabase } from "@/integrations/supabase/client";
 
@@ -26,18 +25,8 @@ export default function EquipmentPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [regions, setRegions] = useState<{ id: string, name: string }[]>([]);
   
-  const [formData, setFormData] = useState({
-    type: '',
-    licensePlate: '',
-    operatorName: '',
-    operatorId: '',
-    dailySalary: 0,
-    fuelType: 'diesel' as 'diesel' | 'gasoline',
-    region_id: ''
-  });
-
   const { 
-    data: equipmentData, 
+    data: equipment, 
     loading, 
     add: addEquipment,
     update: updateEquipment,
@@ -63,29 +52,24 @@ export default function EquipmentPage() {
     fetchRegions();
   }, []);
 
-  const filteredEquipment = equipmentData.filter(equipment => 
-    equipment.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    equipment.licensePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    equipment.operatorName.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredEquipment = equipment.filter(equip => 
+    equip.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    equip.licensePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    equip.operatorName.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
-  const handleOpenEditDialog = (equipment: Equipment) => {
-    setEditEquipment(equipment);
-    setFormData({
-      type: equipment.type,
-      licensePlate: equipment.licensePlate,
-      operatorName: equipment.operatorName,
-      operatorId: equipment.operatorId,
-      dailySalary: equipment.dailySalary,
-      fuelType: equipment.fuelType,
-      region_id: equipment.region_id || ''
-    });
-  };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = async (formData: {
+    type: string;
+    licensePlate: string;
+    operatorName: string;
+    operatorId: string;
+    dailySalary: number;
+    fuelType: 'diesel' | 'gasoline';
+    region_id: string;
+  }) => {
     if (!editEquipment) return;
 
-    if (!validateForm()) return;
+    if (!validateForm(formData)) return;
 
     setIsSaving(true);
     try {
@@ -140,8 +124,16 @@ export default function EquipmentPage() {
     }
   };
 
-  const handleCreateNew = async () => {
-    if (!validateForm()) return;
+  const handleCreateNew = async (formData: {
+    type: string;
+    licensePlate: string;
+    operatorName: string;
+    operatorId: string;
+    dailySalary: number;
+    fuelType: 'diesel' | 'gasoline';
+    region_id: string;
+  }) => {
+    if (!validateForm(formData)) return;
     
     setIsSaving(true);
     try {
@@ -160,7 +152,6 @@ export default function EquipmentPage() {
         description: `${formData.type} (${formData.licensePlate}) has been added successfully.`
       });
       
-      resetForm();
       setIsCreating(false);
     } catch (error: any) {
       toast({
@@ -173,7 +164,15 @@ export default function EquipmentPage() {
     }
   };
 
-  const validateForm = () => {
+  const validateForm = (formData: {
+    type: string;
+    licensePlate: string;
+    operatorName: string;
+    operatorId: string;
+    dailySalary: number;
+    fuelType: 'diesel' | 'gasoline';
+    region_id: string;
+  }) => {
     if (!formData.type) {
       toast({
         title: "Validation Error",
@@ -217,30 +216,18 @@ export default function EquipmentPage() {
     return true;
   };
 
-  const resetForm = () => {
-    setFormData({
-      type: '',
-      licensePlate: '',
-      operatorName: '',
-      operatorId: '',
-      dailySalary: 0,
-      fuelType: 'diesel',
-      region_id: ''
-    });
-  };
-
   const handleExportToExcel = () => {
     try {
-      const exportData = filteredEquipment.map(equipment => {
-        const region = regions.find(r => r.id === equipment.region_id);
+      const exportData = filteredEquipment.map(equip => {
+        const region = regions.find(r => r.id === equip.region_id);
         
         return {
-          "Type": equipment.type,
-          "License Plate": equipment.licensePlate,
-          "Operator Name": equipment.operatorName,
-          "Operator ID": equipment.operatorId,
-          "Fuel Type": equipment.fuelType,
-          "Daily Salary (GEL)": equipment.dailySalary,
+          "Type": equip.type,
+          "License Plate": equip.licensePlate,
+          "Operator Name": equip.operatorName,
+          "Operator ID": equip.operatorId,
+          "Fuel Type": equip.fuelType,
+          "Daily Salary (GEL)": equip.dailySalary,
           "Region": region?.name || "Unassigned"
         };
       });
@@ -272,12 +259,7 @@ export default function EquipmentPage() {
           <p className="text-muted-foreground">Manage construction site equipment</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button 
-            onClick={() => {
-              resetForm();
-              setIsCreating(true);
-            }}
-          >
+          <Button onClick={() => setIsCreating(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Add Equipment
           </Button>
@@ -307,315 +289,48 @@ export default function EquipmentPage() {
             />
           </div>
           
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>License Plate</TableHead>
-                  <TableHead>Operator</TableHead>
-                  <TableHead>Region</TableHead>
-                  <TableHead>Fuel Type</TableHead>
-                  <TableHead>Daily Salary (GEL)</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
-                      Loading equipment data...
-                    </TableCell>
-                  </TableRow>
-                ) : filteredEquipment.length > 0 ? (
-                  filteredEquipment.map((equipment) => {
-                    const region = regions.find(r => r.id === equipment.region_id);
-                    
-                    return (
-                      <TableRow key={equipment.id}>
-                        <TableCell className="font-medium">{equipment.type}</TableCell>
-                        <TableCell>{equipment.licensePlate}</TableCell>
-                        <TableCell>{equipment.operatorName}</TableCell>
-                        <TableCell>{region?.name || "Unassigned"}</TableCell>
-                        <TableCell className="capitalize">{equipment.fuelType}</TableCell>
-                        <TableCell>{equipment.dailySalary}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => setViewEquipment(equipment)}
-                            >
-                              <Eye className="h-4 w-4" />
-                              <span className="sr-only">View</span>
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleOpenEditDialog(equipment)}
-                            >
-                              <Edit className="h-4 w-4" />
-                              <span className="sr-only">Edit</span>
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => setDeleteEquipment(equipment)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                              <span className="sr-only">Delete</span>
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
-                      No equipment found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <EquipmentTable 
+            equipment={filteredEquipment}
+            regions={regions}
+            loading={loading}
+            onView={setViewEquipment}
+            onEdit={setEditEquipment}
+            onDelete={setDeleteEquipment}
+          />
         </CardContent>
       </Card>
 
-      <ViewDetailsDialog 
+      <ViewEquipmentDialog 
+        equipment={viewEquipment}
         isOpen={!!viewEquipment}
         onClose={() => setViewEquipment(null)}
-        title="Equipment Details"
-        description="Complete equipment information"
-      >
-        {viewEquipment && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="font-semibold">Type</Label>
-                <p>{viewEquipment.type}</p>
-              </div>
-              <div>
-                <Label className="font-semibold">License Plate</Label>
-                <p>{viewEquipment.licensePlate}</p>
-              </div>
-              <div>
-                <Label className="font-semibold">Operator Name</Label>
-                <p>{viewEquipment.operatorName}</p>
-              </div>
-              <div>
-                <Label className="font-semibold">Operator ID</Label>
-                <p>{viewEquipment.operatorId}</p>
-              </div>
-              <div>
-                <Label className="font-semibold">Region</Label>
-                <p>{regions.find(r => r.id === viewEquipment.region_id)?.name || "Unassigned"}</p>
-              </div>
-              <div>
-                <Label className="font-semibold">Fuel Type</Label>
-                <p className="capitalize">{viewEquipment.fuelType}</p>
-              </div>
-              <div>
-                <Label className="font-semibold">Daily Salary</Label>
-                <p>{viewEquipment.dailySalary} GEL</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </ViewDetailsDialog>
+        regions={regions}
+      />
 
-      <EditDialog
+      <EditEquipmentDialog
+        equipment={editEquipment}
         isOpen={!!editEquipment}
         onClose={() => setEditEquipment(null)}
-        title="Edit Equipment"
-        description="Update equipment information"
         onSave={handleSaveEdit}
         isSaving={isSaving}
-      >
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="type">Equipment Type</Label>
-            <Input
-              id="type"
-              value={formData.type}
-              onChange={(e) => setFormData({...formData, type: e.target.value})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="licensePlate">License Plate</Label>
-            <Input
-              id="licensePlate"
-              value={formData.licensePlate}
-              onChange={(e) => setFormData({...formData, licensePlate: e.target.value})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="operatorName">Operator Name</Label>
-            <Input
-              id="operatorName"
-              value={formData.operatorName}
-              onChange={(e) => setFormData({...formData, operatorName: e.target.value})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="operatorId">Operator ID</Label>
-            <Input
-              id="operatorId"
-              value={formData.operatorId}
-              onChange={(e) => setFormData({...formData, operatorId: e.target.value})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="region">Region</Label>
-            <Select 
-              value={formData.region_id} 
-              onValueChange={(value) => setFormData({...formData, region_id: value})}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Region" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Unassigned</SelectItem>
-                {regions.map(region => (
-                  <SelectItem key={region.id} value={region.id}>
-                    {region.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="dailySalary">Daily Salary (GEL)</Label>
-            <Input
-              id="dailySalary"
-              type="number"
-              value={formData.dailySalary}
-              onChange={(e) => setFormData({...formData, dailySalary: Number(e.target.value)})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="fuelType">Fuel Type</Label>
-            <Select 
-              value={formData.fuelType} 
-              onValueChange={(value) => setFormData({...formData, fuelType: value as 'diesel' | 'gasoline'})}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select fuel type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="diesel">Diesel</SelectItem>
-                <SelectItem value="gasoline">Gasoline</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </EditDialog>
+        regions={regions}
+      />
 
-      <EditDialog
+      <EditEquipmentDialog
+        equipment={null}
         isOpen={isCreating}
         onClose={() => setIsCreating(false)}
-        title="Add New Equipment"
-        description="Enter equipment details"
         onSave={handleCreateNew}
         isSaving={isSaving}
-        saveButtonText="Add Equipment"
-      >
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="newType">Equipment Type</Label>
-            <Input
-              id="newType"
-              value={formData.type}
-              onChange={(e) => setFormData({...formData, type: e.target.value})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="newLicensePlate">License Plate</Label>
-            <Input
-              id="newLicensePlate"
-              value={formData.licensePlate}
-              onChange={(e) => setFormData({...formData, licensePlate: e.target.value})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="newOperatorName">Operator Name</Label>
-            <Input
-              id="newOperatorName"
-              value={formData.operatorName}
-              onChange={(e) => setFormData({...formData, operatorName: e.target.value})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="newOperatorId">Operator ID</Label>
-            <Input
-              id="newOperatorId"
-              value={formData.operatorId}
-              onChange={(e) => setFormData({...formData, operatorId: e.target.value})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="newRegion">Region</Label>
-            <Select 
-              value={formData.region_id} 
-              onValueChange={(value) => setFormData({...formData, region_id: value})}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Region" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Unassigned</SelectItem>
-                {regions.map(region => (
-                  <SelectItem key={region.id} value={region.id}>
-                    {region.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="newDailySalary">Daily Salary (GEL)</Label>
-            <Input
-              id="newDailySalary"
-              type="number"
-              value={formData.dailySalary}
-              onChange={(e) => setFormData({...formData, dailySalary: Number(e.target.value)})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="newFuelType">Fuel Type</Label>
-            <Select 
-              value={formData.fuelType} 
-              onValueChange={(value) => setFormData({...formData, fuelType: value as 'diesel' | 'gasoline'})}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select fuel type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="diesel">Diesel</SelectItem>
-                <SelectItem value="gasoline">Gasoline</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </EditDialog>
+        regions={regions}
+        isCreating={true}
+      />
 
-      <DeleteConfirmDialog
+      <DeleteEquipmentDialog
+        equipment={deleteEquipment}
         isOpen={!!deleteEquipment}
         onClose={() => setDeleteEquipment(null)}
         onConfirm={handleDelete}
-        title="Delete Equipment"
-        description={`Are you sure you want to delete ${deleteEquipment?.type} (${deleteEquipment?.licensePlate})? This action cannot be undone.`}
         isDeleting={isDeleting}
       />
     </div>

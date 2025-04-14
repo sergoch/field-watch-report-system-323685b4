@@ -1,11 +1,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-interface Equipment {
-  id: string;
-  type: string;
-  licensePlate: string;
-}
+import { Equipment } from "@/types";
 
 interface EquipmentTableProps {
   equipment: Equipment[];

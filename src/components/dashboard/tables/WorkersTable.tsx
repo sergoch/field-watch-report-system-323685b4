@@ -1,11 +1,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-interface Worker {
-  id: string;
-  fullName: string;
-  personalId: string;
-}
+import { Worker } from "@/types";
 
 interface WorkersTableProps {
   workers: Worker[];

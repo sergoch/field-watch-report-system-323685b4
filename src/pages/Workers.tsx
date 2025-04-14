@@ -1,17 +1,16 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Download, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Search, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 import { Worker } from "@/types";
-import { ViewDetailsDialog } from "@/components/crud/ViewDetailsDialog";
-import { EditDialog } from "@/components/crud/EditDialog";
-import { DeleteConfirmDialog } from "@/components/crud/DeleteConfirmDialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { WorkersTable } from "@/components/workers/WorkersTable";
+import { EditWorkerDialog } from "@/components/workers/EditWorkerDialog";
+import { DeleteWorkerDialog } from "@/components/workers/DeleteWorkerDialog";
+import { ViewWorkerDialog } from "@/components/workers/ViewWorkerDialog";
 import * as XLSX from 'xlsx';
 import { supabase } from "@/integrations/supabase/client";
 
@@ -31,15 +30,8 @@ export default function WorkersPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [regions, setRegions] = useState<{ id: string, name: string }[]>([]);
   
-  const [formData, setFormData] = useState({
-    fullName: '',
-    personalId: '',
-    dailySalary: 0,
-    region_id: ''
-  });
-
   const { 
-    data: workersData, 
+    data: workers, 
     loading, 
     add: addWorker,
     update: updateWorker,
@@ -47,8 +39,6 @@ export default function WorkersPage() {
   } = useSupabaseRealtime<WorkerWithMeta>({ 
     tableName: 'workers' 
   });
-
-  const workers = workersData;
 
   useEffect(() => {
     const fetchRegions = async () => {
@@ -71,21 +61,16 @@ export default function WorkersPage() {
     worker.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     worker.personalId.includes(searchQuery)
   );
-  
-  const handleOpenEditDialog = (worker: WorkerWithMeta) => {
-    setEditWorker(worker);
-    setFormData({
-      fullName: worker.fullName,
-      personalId: worker.personalId,
-      dailySalary: worker.dailySalary,
-      region_id: worker.region_id || ''
-    });
-  };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = async (formData: {
+    fullName: string;
+    personalId: string;
+    dailySalary: number;
+    region_id: string;
+  }) => {
     if (!editWorker) return;
 
-    if (!validateForm()) return;
+    if (!validateForm(formData)) return;
 
     setIsSaving(true);
     try {
@@ -137,8 +122,13 @@ export default function WorkersPage() {
     }
   };
 
-  const handleCreateNew = async () => {
-    if (!validateForm()) return;
+  const handleCreateNew = async (formData: {
+    fullName: string;
+    personalId: string;
+    dailySalary: number;
+    region_id: string;
+  }) => {
+    if (!validateForm(formData)) return;
     
     setIsSaving(true);
     try {
@@ -154,7 +144,6 @@ export default function WorkersPage() {
         description: `${formData.fullName} has been added successfully.`
       });
       
-      resetForm();
       setIsCreating(false);
     } catch (error: any) {
       toast({
@@ -167,7 +156,12 @@ export default function WorkersPage() {
     }
   };
 
-  const validateForm = () => {
+  const validateForm = (formData: {
+    fullName: string;
+    personalId: string;
+    dailySalary: number;
+    region_id: string;
+  }) => {
     if (!formData.fullName.trim()) {
       toast({
         title: "Validation Error",
@@ -193,15 +187,6 @@ export default function WorkersPage() {
       return false;
     }
     return true;
-  };
-
-  const resetForm = () => {
-    setFormData({
-      fullName: '',
-      personalId: '',
-      dailySalary: 0,
-      region_id: ''
-    });
   };
 
   const handleExportToExcel = () => {
@@ -244,10 +229,7 @@ export default function WorkersPage() {
           <p className="text-muted-foreground">Manage construction site workers</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button onClick={() => {
-            resetForm();
-            setIsCreating(true);
-          }}>
+          <Button onClick={() => setIsCreating(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Add Worker
           </Button>
@@ -277,239 +259,48 @@ export default function WorkersPage() {
             />
           </div>
           
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Full Name</TableHead>
-                  <TableHead>Personal ID</TableHead>
-                  <TableHead>Region</TableHead>
-                  <TableHead>Daily Salary (GEL)</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      Loading workers data...
-                    </TableCell>
-                  </TableRow>
-                ) : filteredWorkers.length > 0 ? (
-                  filteredWorkers.map((worker) => {
-                    const region = regions.find(r => r.id === worker.region_id);
-                    
-                    return (
-                      <TableRow key={worker.id}>
-                        <TableCell className="font-medium">{worker.fullName}</TableCell>
-                        <TableCell>{worker.personalId}</TableCell>
-                        <TableCell>{region?.name || "Unassigned"}</TableCell>
-                        <TableCell>{worker.dailySalary}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => setViewWorker(worker)}
-                            >
-                              <Eye className="h-4 w-4" />
-                              <span className="sr-only">View</span>
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleOpenEditDialog(worker)}
-                            >
-                              <Edit className="h-4 w-4" />
-                              <span className="sr-only">Edit</span>
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => setDeleteWorker(worker)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                              <span className="sr-only">Delete</span>
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      No workers found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <WorkersTable 
+            workers={filteredWorkers}
+            regions={regions}
+            loading={loading}
+            onView={setViewWorker}
+            onEdit={setEditWorker}
+            onDelete={setDeleteWorker}
+          />
         </CardContent>
       </Card>
 
-      <ViewDetailsDialog 
+      <ViewWorkerDialog 
+        worker={viewWorker}
         isOpen={!!viewWorker}
         onClose={() => setViewWorker(null)}
-        title="Worker Details"
-        description="Complete worker information"
-      >
-        {viewWorker && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="font-semibold">Full Name</Label>
-                <p>{viewWorker.fullName}</p>
-              </div>
-              <div>
-                <Label className="font-semibold">Personal ID</Label>
-                <p>{viewWorker.personalId}</p>
-              </div>
-              <div>
-                <Label className="font-semibold">Region</Label>
-                <p>{regions.find(r => r.id === viewWorker.region_id)?.name || "Unassigned"}</p>
-              </div>
-              <div>
-                <Label className="font-semibold">Daily Salary</Label>
-                <p>{viewWorker.dailySalary} GEL</p>
-              </div>
-              {viewWorker?.createdAt && (
-                <div>
-                  <Label className="font-semibold">Created At</Label>
-                  <p>{new Date(viewWorker.createdAt).toLocaleDateString()}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </ViewDetailsDialog>
+        regions={regions}
+      />
 
-      <EditDialog
+      <EditWorkerDialog
+        worker={editWorker}
         isOpen={!!editWorker}
         onClose={() => setEditWorker(null)}
-        title="Edit Worker"
-        description="Update worker information"
         onSave={handleSaveEdit}
         isSaving={isSaving}
-      >
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="fullName">Full Name</Label>
-            <Input
-              id="fullName"
-              value={formData.fullName}
-              onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="personalId">Personal ID</Label>
-            <Input
-              id="personalId"
-              value={formData.personalId}
-              onChange={(e) => setFormData({...formData, personalId: e.target.value})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="region">Region</Label>
-            <Select 
-              value={formData.region_id} 
-              onValueChange={(value) => setFormData({...formData, region_id: value})}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Region" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Unassigned</SelectItem>
-                {regions.map(region => (
-                  <SelectItem key={region.id} value={region.id}>
-                    {region.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="dailySalary">Daily Salary (GEL)</Label>
-            <Input
-              id="dailySalary"
-              type="number"
-              value={formData.dailySalary}
-              onChange={(e) => setFormData({...formData, dailySalary: Number(e.target.value)})}
-              className="mt-1"
-            />
-          </div>
-        </div>
-      </EditDialog>
+        regions={regions}
+      />
 
-      <EditDialog
+      <EditWorkerDialog
+        worker={null}
         isOpen={isCreating}
         onClose={() => setIsCreating(false)}
-        title="Add New Worker"
-        description="Enter worker details"
         onSave={handleCreateNew}
         isSaving={isSaving}
-        saveButtonText="Add Worker"
-      >
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="newFullName">Full Name</Label>
-            <Input
-              id="newFullName"
-              value={formData.fullName}
-              onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="newPersonalId">Personal ID</Label>
-            <Input
-              id="newPersonalId"
-              value={formData.personalId}
-              onChange={(e) => setFormData({...formData, personalId: e.target.value})}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="newRegion">Region</Label>
-            <Select 
-              value={formData.region_id} 
-              onValueChange={(value) => setFormData({...formData, region_id: value})}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Region" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Unassigned</SelectItem>
-                {regions.map(region => (
-                  <SelectItem key={region.id} value={region.id}>
-                    {region.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="newDailySalary">Daily Salary (GEL)</Label>
-            <Input
-              id="newDailySalary"
-              type="number"
-              value={formData.dailySalary}
-              onChange={(e) => setFormData({...formData, dailySalary: Number(e.target.value)})}
-              className="mt-1"
-            />
-          </div>
-        </div>
-      </EditDialog>
+        regions={regions}
+        isCreating={true}
+      />
 
-      <DeleteConfirmDialog
+      <DeleteWorkerDialog
+        worker={deleteWorker}
         isOpen={!!deleteWorker}
         onClose={() => setDeleteWorker(null)}
         onConfirm={handleDelete}
-        title="Delete Worker"
-        description={`Are you sure you want to remove ${deleteWorker?.fullName} from the registry? This action cannot be undone.`}
         isDeleting={isDeleting}
       />
     </div>
