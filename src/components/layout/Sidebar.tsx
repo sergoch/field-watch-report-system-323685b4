@@ -1,4 +1,3 @@
-
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
@@ -57,18 +56,6 @@ export function SidebarContent() {
             
             <SidebarLink href="/users" icon={Users} active={isActive('/users')}>
               Manage Users
-            </SidebarLink>
-            
-            <SidebarLink href="/workers" icon={Wrench} active={isActive('/workers')}>
-              Workers Registry
-            </SidebarLink>
-            
-            <SidebarLink href="/equipment" icon={Truck} active={isActive('/equipment')}>
-              Equipment Registry
-            </SidebarLink>
-            
-            <SidebarLink href="/analytics" icon={BarChart3} active={isActive('/analytics')}>
-              Analytics
             </SidebarLink>
             
             <SidebarLink href="/settings" icon={Settings} active={isActive('/settings')}>
