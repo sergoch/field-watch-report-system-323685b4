@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -5,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { AlertTriangle, FileText, Users, Truck, Calendar } from "lucide-react";
-import { DateRangePicker } from "@/components/datepicker/DateRangePicker";
+import { DatePickerWithRange } from "@/components/datepicker/DateRangePicker";
+import { DateRange } from "react-day-picker";
 
 interface DashboardStats {
   workerCount: number;
@@ -19,7 +21,7 @@ interface DashboardStats {
 export default function DashboardPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [stats, setStats] = useState<DashboardStats>({
     workerCount: 0,
     operatorCount: 0,
@@ -83,9 +85,9 @@ export default function DashboardPage() {
             {isAdmin ? "Administrator Dashboard" : `Engineer Dashboard - Region: ${user?.regionId}`}
           </p>
         </div>
-        <DateRangePicker 
-          date={dateRange}
-          onDateChange={setDateRange}
+        <DatePickerWithRange 
+          dateRange={dateRange}
+          setDateRange={setDateRange}
         />
       </div>
 
