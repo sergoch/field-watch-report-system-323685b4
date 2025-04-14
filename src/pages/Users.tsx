@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +17,18 @@ import { Users, PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { Region } from '@/types';
 import { DeleteConfirmDialog } from '@/components/crud/DeleteConfirmDialog';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
+
+interface UserMetadata {
+  name: string;
+  role: string;
+  region_id?: string;
+}
+
+interface UserData {
+  id: string;
+  email: string | undefined;
+  user_metadata: UserMetadata;
+}
 
 type UserProfile = {
   id: string;
@@ -63,20 +74,20 @@ export default function UsersManagementPage() {
       return;
     }
 
-    // Filter and map users
     const engineerUsers = usersData.users
-      .filter(user => user.user_metadata?.role === 'engineer')
+      .filter(user => (user.user_metadata as UserMetadata)?.role === 'engineer')
       .map(user => {
-        const regionId = user.user_metadata?.region_id as string;
+        const metadata = user.user_metadata as UserMetadata;
+        const regionId = metadata?.region_id;
         const regionName = regions.find(r => r.id === regionId)?.name;
         
         return {
           id: user.id,
           email: user.email || '',
-          name: user.user_metadata?.name || '',
+          name: metadata?.name || '',
           region_id: regionId,
           regionName,
-          role: user.user_metadata?.role as 'engineer'
+          role: metadata?.role as 'engineer'
         };
       });
 
@@ -84,7 +95,6 @@ export default function UsersManagementPage() {
   };
 
   const handleCreateUser = async () => {
-    // Form validation
     if (!newUser.email || !newUser.password || !newUser.name) {
       toast({
         title: "Validation Error",
@@ -97,7 +107,6 @@ export default function UsersManagementPage() {
     setIsCreatingUser(true);
     
     try {
-      // Create the user
       const { data, error } = await supabase.auth.admin.createUser({
         email: newUser.email,
         password: newUser.password,
@@ -118,10 +127,8 @@ export default function UsersManagementPage() {
         description: `${newUser.name} (${newUser.email}) has been added successfully`
       });
       
-      // Refresh user list
       fetchUsers();
       
-      // Reset form and close dialog
       setNewUser({ email: '', name: '', password: '', region_id: '', role: 'engineer' });
       setIsCreating(false);
       
@@ -246,7 +253,6 @@ export default function UsersManagementPage() {
         </CardContent>
       </Card>
 
-      {/* Add Engineer Dialog */}
       <Dialog open={isCreating} onOpenChange={setIsCreating}>
         <DialogContent>
           <DialogHeader>
@@ -311,7 +317,6 @@ export default function UsersManagementPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete User Confirmation Dialog */}
       <DeleteConfirmDialog
         isOpen={!!deleteUser}
         onClose={() => setDeleteUser(null)}

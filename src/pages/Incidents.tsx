@@ -26,6 +26,7 @@ export default function IncidentsPage() {
   const [editIncident, setEditIncident] = useState<Incident | null>(null);
   const [deleteIncident, setDeleteIncident] = useState<Incident | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [regionNames, setRegionNames] = useState<Record<string, string>>({});
   
   const { 
@@ -320,25 +321,30 @@ export default function IncidentsPage() {
         onClose={() => setEditIncident(null)}
         title="Edit Incident"
         description="Update incident details"
+        isSaving={isUpdating}
         onSave={() => {
+          setIsUpdating(true);
           toast({
             title: "Not Implemented",
             description: "Editing incidents requires a more complex form. Use the incident form page instead.",
             variant: "destructive"
           });
+          setIsUpdating(false);
           setEditIncident(null);
         }}
       >
-        <div className="py-4 text-center">
-          <p>For editing incidents, please use the full incident form.</p>
-          <div className="mt-4">
-            <Button asChild>
-              <Link to={`/incidents/${editIncident?.id}`}>
-                Go to Incident Form
-              </Link>
-            </Button>
+        {editIncident && (
+          <div className="py-4 text-center">
+            <p>For editing incidents, please use the full incident form.</p>
+            <div className="mt-4">
+              <Button asChild>
+                <Link to={`/incidents/${editIncident?.id}`}>
+                  Go to Incident Form
+                </Link>
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </EditDialog>
     </div>
   );

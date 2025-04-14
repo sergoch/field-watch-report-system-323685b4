@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -13,7 +12,7 @@ interface UseRealtimeOptions {
   initialFetch?: boolean;
 }
 
-export function useSupabaseRealtime<T = any>(options: UseRealtimeOptions) {
+export function useSupabaseRealtime<T extends Record<string, any>>(options: UseRealtimeOptions) {
   const { 
     tableName, 
     events = ['INSERT', 'UPDATE', 'DELETE'], 
@@ -27,14 +26,12 @@ export function useSupabaseRealtime<T = any>(options: UseRealtimeOptions) {
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
 
-  // Initial data fetch
   useEffect(() => {
     if (initialFetch) {
       fetchData();
     }
   }, [tableName, filter]);
 
-  // Realtime subscription
   useEffect(() => {
     const channel = supabase
       .channel(`${tableName}-changes`)
@@ -45,11 +42,9 @@ export function useSupabaseRealtime<T = any>(options: UseRealtimeOptions) {
       }, async (payload) => {
         console.log('Realtime change:', payload);
         
-        // Refetch data on any change
         try {
           await fetchData();
           
-          // Show notification based on the event
           if (payload.eventType === 'INSERT') {
             toast({ title: 'New Entry', description: `A new ${tableName} entry was added` });
           } else if (payload.eventType === 'UPDATE') {
@@ -83,9 +78,8 @@ export function useSupabaseRealtime<T = any>(options: UseRealtimeOptions) {
       
       if (error) throw error;
       
-      // Transform data (convert snake_case to camelCase)
-      const transformedData = data.map(item => convertToCamelCase<T>(item));
-      setData(transformedData || []);
+      const transformedData = data?.map(item => convertToCamelCase<T>(item as Record<string, any>)) || [];
+      setData(transformedData);
     } catch (error) {
       console.error(`Error fetching ${tableName}:`, error);
       setError(error as Error);
@@ -94,10 +88,9 @@ export function useSupabaseRealtime<T = any>(options: UseRealtimeOptions) {
     }
   };
 
-  const addData = async (newData: Omit<T, 'id'>) => {
+  const addData = async (newData: Partial<T>) => {
     try {
-      // Convert camelCase to snake_case for db operations
-      const dbData = convertToSnakeCase(newData);
+      const dbData = convertToSnakeCase(newData as Record<string, any>);
       
       const { data, error } = await supabase
         .from(tableName)
@@ -105,7 +98,7 @@ export function useSupabaseRealtime<T = any>(options: UseRealtimeOptions) {
         .select();
       
       if (error) throw error;
-      return convertToCamelCase<T>(data[0]);
+      return convertToCamelCase<T>(data[0] as Record<string, any>);
     } catch (error) {
       console.error(`Error adding ${tableName}:`, error);
       throw error;
@@ -114,8 +107,7 @@ export function useSupabaseRealtime<T = any>(options: UseRealtimeOptions) {
 
   const updateData = async (id: string, updates: Partial<T>) => {
     try {
-      // Convert camelCase to snake_case for db operations
-      const dbUpdates = convertToSnakeCase(updates);
+      const dbUpdates = convertToSnakeCase(updates as Record<string, any>);
       
       const { data, error } = await supabase
         .from(tableName)
@@ -124,7 +116,7 @@ export function useSupabaseRealtime<T = any>(options: UseRealtimeOptions) {
         .select();
       
       if (error) throw error;
-      return convertToCamelCase<T>(data[0]);
+      return convertToCamelCase<T>(data[0] as Record<string, any>);
     } catch (error) {
       console.error(`Error updating ${tableName}:`, error);
       throw error;
