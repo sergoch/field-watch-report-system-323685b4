@@ -1,17 +1,33 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Plus, Search, Download } from "lucide-react";
+import { FileText, Plus, Search, Download, Eye, Calendar } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/use-toast";
+import { DatePickerWithRange } from "@/components/datepicker/DateRangePicker";
+import { DateRange } from "react-day-picker";
+
+interface Report {
+  id: string;
+  date: string;
+  region: string;
+  workers: number;
+  equipment: number;
+  fuel: number;
+  materials: string;
+}
 
 export default function ReportsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const { toast } = useToast();
-  
+
   // Mock data for reports (replace with actual data fetching later)
   const mockReports = [
     { id: "1", date: "2023-08-15", region: "North", workers: 8, equipment: 3, fuel: 125, materials: "Concrete, steel" },
@@ -20,18 +36,46 @@ export default function ReportsPage() {
     { id: "4", date: "2023-08-12", region: "West", workers: 10, equipment: 4, fuel: 155, materials: "Sand, gravel" },
     { id: "5", date: "2023-08-11", region: "Central", workers: 15, equipment: 7, fuel: 210, materials: "Wood, metal sheets" },
   ];
-  
-  // Filter reports based on search query
-  const filteredReports = mockReports.filter(report => 
-    report.region.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    report.materials.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+
+  // Filter reports based on search query and date range
+  const filteredReports = mockReports.filter(report => {
+    const matchesSearch = report.region.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      report.materials.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!dateRange?.from || !dateRange?.to) return matchesSearch;
+    
+    const reportDate = new Date(report.date);
+    return matchesSearch && 
+      reportDate >= dateRange.from && 
+      reportDate <= dateRange.to;
+  });
 
   const handleExportToExcel = () => {
     try {
-      const worksheet = XLSX.utils.json_to_sheet(filteredReports);
+      const exportData = filteredReports.map(report => ({
+        Date: report.date,
+        Region: report.region,
+        "Number of Workers": report.workers,
+        "Equipment Used": report.equipment,
+        "Fuel Used (L)": report.fuel,
+        "Materials": report.materials,
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Reports");
+      
+      // Format columns
+      const columnWidths = [
+        { wch: 12 }, // Date
+        { wch: 15 }, // Region
+        { wch: 15 }, // Workers
+        { wch: 15 }, // Equipment
+        { wch: 12 }, // Fuel
+        { wch: 40 }, // Materials
+      ];
+      worksheet["!cols"] = columnWidths;
+      
       XLSX.writeFile(workbook, `amradzi_reports_${new Date().toISOString().split('T')[0]}.xlsx`);
       
       toast({
@@ -77,14 +121,23 @@ export default function ReportsPage() {
           <CardTitle>Reports List</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by region or materials..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-sm"
-            />
+          <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by region or materials..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <DatePickerWithRange
+                dateRange={dateRange}
+                setDateRange={setDateRange}
+              />
+            </div>
           </div>
           
           <div className="rounded-md border">
@@ -109,12 +162,20 @@ export default function ReportsPage() {
                       <TableCell>{report.workers}</TableCell>
                       <TableCell>{report.equipment}</TableCell>
                       <TableCell>{report.fuel}</TableCell>
-                      <TableCell>{report.materials}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="max-w-[200px] truncate">{report.materials}</TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setSelectedReport(report)}
+                        >
+                          <Eye className="h-4 w-4" />
+                          <span className="sr-only">View Details</span>
+                        </Button>
                         <Button variant="ghost" size="sm" asChild>
                           <Link to={`/reports/${report.id}`}>
                             <FileText className="h-4 w-4" />
-                            <span className="sr-only">View</span>
+                            <span className="sr-only">Edit</span>
                           </Link>
                         </Button>
                       </TableCell>
@@ -132,6 +193,49 @@ export default function ReportsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Report Details</DialogTitle>
+          </DialogHeader>
+          {selectedReport && (
+            <div className="grid gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-semibold">Date</h3>
+                  <p>{selectedReport.date}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Region</h3>
+                  <p>{selectedReport.region}</p>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold">Resources</h3>
+                <div className="grid grid-cols-3 gap-4 mt-2">
+                  <div>
+                    <span className="text-muted-foreground">Workers:</span>
+                    <p className="text-lg">{selectedReport.workers}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Equipment:</span>
+                    <p className="text-lg">{selectedReport.equipment}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Fuel Used:</span>
+                    <p className="text-lg">{selectedReport.fuel}L</p>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold">Materials</h3>
+                <p className="mt-1">{selectedReport.materials}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
