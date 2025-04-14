@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -145,6 +146,7 @@ export function useSupabaseRealtime<T extends Record<string, any>>(options: UseR
     refetch: fetchData,
     add: addData,
     update: updateData,
-    remove: deleteData
+    remove: deleteData,
+    setData // Add the setData function to the return value
   };
 }

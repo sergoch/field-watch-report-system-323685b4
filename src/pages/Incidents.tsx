@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -163,6 +164,22 @@ export default function IncidentsPage() {
       });
     }
   };
+
+  // Fetch regions effect 
+  useEffect(() => {
+    const fetchRegions = async () => {
+      const { data } = await supabase.from('regions').select('id, name');
+      if (data) {
+        const regions: Record<string, string> = {};
+        data.forEach(region => {
+          regions[region.id] = region.name;
+        });
+        setRegionNames(regions);
+      }
+    };
+    
+    fetchRegions();
+  }, []);
 
   return (
     <div className="space-y-6">
