@@ -75,13 +75,26 @@ export default function UsersManagementPage() {
       return;
     }
 
+    if (!usersData || !usersData.users) {
+      toast({
+        title: "No users data",
+        description: "Could not retrieve users from Supabase",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const engineerUsers = usersData.users
       .filter(user => {
-        const metadata = user.user_metadata as UserMetadata;
+        // Explicitly cast the user to include user_metadata
+        const userData = user as unknown as UserData;
+        const metadata = userData.user_metadata;
         return metadata?.role === 'engineer';
       })
       .map(user => {
-        const metadata = user.user_metadata as UserMetadata;
+        // Explicitly cast the user to include user_metadata
+        const userData = user as unknown as UserData;
+        const metadata = userData.user_metadata;
         const regionId = metadata?.region_id;
         const regionName = regions.find(r => r.id === regionId)?.name;
         
