@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,9 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertTriangle, Plus, Search, Download, Eye } from "lucide-react";
 import { IncidentType } from "@/types";
+import * as XLSX from 'xlsx';
+import { useToast } from "@/hooks/use-toast";
 
 export default function IncidentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
   
   // Incident types
   const incidentTypes: IncidentType[] = [
@@ -36,6 +38,27 @@ export default function IncidentsPage() {
       (incident.region.toLowerCase().includes(searchQuery.toLowerCase()) ||
        incident.description.toLowerCase().includes(searchQuery.toLowerCase()))
     );
+  };
+
+  const handleExportToExcel = (type: IncidentType | "All") => {
+    try {
+      const filteredIncidents = getFilteredIncidents(type);
+      const worksheet = XLSX.utils.json_to_sheet(filteredIncidents);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, `${type} Incidents`);
+      XLSX.writeFile(workbook, `amradzi_${type.toLowerCase()}_incidents_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      toast({
+        title: "Export Successful",
+        description: `${type} Incidents exported to Excel`,
+      });
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Could not export incidents to Excel",
+        variant: "destructive"
+      });
+    }
   };
   
   // Count incidents by type
@@ -65,9 +88,9 @@ export default function IncidentsPage() {
               Report Incident
             </Link>
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => handleExportToExcel("All")}>
             <Download className="mr-2 h-4 w-4" />
-            Export to Excel
+            Export All to Excel
           </Button>
         </div>
       </div>
@@ -107,12 +130,34 @@ export default function IncidentsPage() {
             
             {/* All Incidents Tab */}
             <TabsContent value="All" className="pt-2">
+              <div className="flex justify-end mb-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleExportToExcel("All")}
+                  disabled={getFilteredIncidents("All").length === 0}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+              </div>
               <IncidentTable incidents={getFilteredIncidents("All")} />
             </TabsContent>
             
             {/* Type-specific Tabs */}
             {incidentTypes.map((type) => (
               <TabsContent key={type} value={type} className="pt-2">
+                <div className="flex justify-end mb-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleExportToExcel(type)}
+                    disabled={getFilteredIncidents(type).length === 0}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
+                  </Button>
+                </div>
                 <IncidentTable incidents={getFilteredIncidents(type)} />
               </TabsContent>
             ))}

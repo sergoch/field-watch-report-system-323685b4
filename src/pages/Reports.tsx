@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,11 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Plus, Search, Download } from "lucide-react";
+import * as XLSX from 'xlsx';
+import { useToast } from "@/hooks/use-toast";
 
 export default function ReportsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
   
-  // Mock data for reports
+  // Mock data for reports (replace with actual data fetching later)
   const mockReports = [
     { id: "1", date: "2023-08-15", region: "North", workers: 8, equipment: 3, fuel: 125, materials: "Concrete, steel" },
     { id: "2", date: "2023-08-14", region: "East", workers: 12, equipment: 5, fuel: 180, materials: "Bricks, cement" },
@@ -24,6 +26,26 @@ export default function ReportsPage() {
     report.region.toLowerCase().includes(searchQuery.toLowerCase()) ||
     report.materials.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleExportToExcel = () => {
+    try {
+      const worksheet = XLSX.utils.json_to_sheet(filteredReports);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Reports");
+      XLSX.writeFile(workbook, `amradzi_reports_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      toast({
+        title: "Export Successful",
+        description: "Reports exported to Excel",
+      });
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Could not export reports to Excel",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -39,7 +61,11 @@ export default function ReportsPage() {
               New Report
             </Link>
           </Button>
-          <Button variant="outline">
+          <Button 
+            variant="outline" 
+            onClick={handleExportToExcel}
+            disabled={filteredReports.length === 0}
+          >
             <Download className="mr-2 h-4 w-4" />
             Export to Excel
           </Button>
