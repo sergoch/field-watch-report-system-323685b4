@@ -26,7 +26,9 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
+					light: '#33C3F0',
+					lighter: '#61DAFB'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
@@ -61,6 +63,14 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				amradzi: {
+					blue: '#1EAEDB',
+					lightBlue: '#33C3F0',
+					skyBlue: '#0FA0CE',
+					gray: '#8E9196',
+					lightGray: '#F1F1F1',
+					darkGray: '#333333'
 				}
 			},
 			borderRadius: {
