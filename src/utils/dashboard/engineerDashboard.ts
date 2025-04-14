@@ -90,13 +90,16 @@ export const fetchEngineerDashboardStats = async (
     
     if (reportWorkersData) {
       reportWorkersData.forEach(rw => {
-        if (rw.workers && !workersSet.has(rw.workers.id)) {
-          workersSet.add(rw.workers.id);
-          workers.push({
-            id: rw.workers.id,
-            fullName: rw.workers.full_name,
-            personalId: rw.workers.personal_id
-          });
+        if (rw.workers && typeof rw.workers === 'object' && 'id' in rw.workers) {
+          const workerId = rw.workers.id as string;
+          if (!workersSet.has(workerId)) {
+            workersSet.add(workerId);
+            workers.push({
+              id: workerId,
+              fullName: rw.workers.full_name as string,
+              personalId: rw.workers.personal_id as string
+            });
+          }
         }
       });
     }
@@ -118,13 +121,16 @@ export const fetchEngineerDashboardStats = async (
     
     if (reportEquipmentData) {
       reportEquipmentData.forEach(re => {
-        if (re.equipment && !equipmentSet.has(re.equipment.id)) {
-          equipmentSet.add(re.equipment.id);
-          equipment.push({
-            id: re.equipment.id,
-            type: re.equipment.type,
-            licensePlate: re.equipment.license_plate
-          });
+        if (re.equipment && typeof re.equipment === 'object' && 'id' in re.equipment) {
+          const equipId = re.equipment.id as string;
+          if (!equipmentSet.has(equipId)) {
+            equipmentSet.add(equipId);
+            equipment.push({
+              id: equipId,
+              type: re.equipment.type as string,
+              licensePlate: re.equipment.license_plate as string
+            });
+          }
         }
       });
     }
@@ -133,8 +139,11 @@ export const fetchEngineerDashboardStats = async (
     const operatorIds = new Set<string>();
     if (reportEquipmentData) {
       reportEquipmentData.forEach(re => {
-        if (re.equipment?.operator_id) {
-          operatorIds.add(re.equipment.operator_id);
+        if (re.equipment && typeof re.equipment === 'object' && 'operator_id' in re.equipment) {
+          const operatorId = re.equipment.operator_id as string;
+          if (operatorId) {
+            operatorIds.add(operatorId);
+          }
         }
       });
     }
