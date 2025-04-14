@@ -141,7 +141,7 @@ export const fetchEngineerDashboardStats = async (
     const { data: recentIncidents } = await recentIncidentsQuery;
     
     // Fetch workers involved in engineer's reports
-    const { data: reportWorkers } = await supabase
+    const { data: reportWorkersData } = await supabase
       .from('report_workers')
       .select(`
         report_id, 
@@ -151,8 +151,25 @@ export const fetchEngineerDashboardStats = async (
       `)
       .in('report_id', (recentReports || []).map(r => r.id));
     
+    // Extract unique workers and equipment
+    const workersSet = new Set<string>();
+    const workers: { id: string; fullName: string; personalId: string }[] = [];
+    
+    if (reportWorkersData) {
+      reportWorkersData.forEach(rw => {
+        if (rw.workers && !workersSet.has(rw.workers.id)) {
+          workersSet.add(rw.workers.id);
+          workers.push({
+            id: rw.workers.id,
+            fullName: rw.workers.full_name,
+            personalId: rw.workers.personal_id
+          });
+        }
+      });
+    }
+    
     // Fetch equipment involved in engineer's reports
-    const { data: reportEquipment } = await supabase
+    const { data: reportEquipmentData } = await supabase
       .from('report_equipment')
       .select(`
         report_id, 
@@ -163,45 +180,35 @@ export const fetchEngineerDashboardStats = async (
       `)
       .in('report_id', (recentReports || []).map(r => r.id));
     
-    // Extract unique workers and equipment
-    const workersSet = new Set<string>();
-    const workers: { id: string; fullName: string; personalId: string }[] = [];
-    
-    reportWorkers?.forEach(rw => {
-      if (rw.workers && !workersSet.has(rw.workers.id)) {
-        workersSet.add(rw.workers.id);
-        workers.push({
-          id: rw.workers.id,
-          fullName: rw.workers.full_name,
-          personalId: rw.workers.personal_id
-        });
-      }
-    });
-    
     const equipmentSet = new Set<string>();
     const equipment: { id: string; type: string; licensePlate: string }[] = [];
     
-    reportEquipment?.forEach(re => {
-      if (re.equipment && !equipmentSet.has(re.equipment.id)) {
-        equipmentSet.add(re.equipment.id);
-        equipment.push({
-          id: re.equipment.id,
-          type: re.equipment.type,
-          licensePlate: re.equipment.license_plate
-        });
-      }
-    });
+    if (reportEquipmentData) {
+      reportEquipmentData.forEach(re => {
+        if (re.equipment && !equipmentSet.has(re.equipment.id)) {
+          equipmentSet.add(re.equipment.id);
+          equipment.push({
+            id: re.equipment.id,
+            type: re.equipment.type,
+            licensePlate: re.equipment.license_plate
+          });
+        }
+      });
+    }
     
     // Count operators (unique operator_ids from equipment)
     const operatorIds = new Set<string>();
-    reportEquipment?.forEach(re => {
-      if (re.equipment?.operator_id) {
-        operatorIds.add(re.equipment.operator_id);
-      }
-    });
+    
+    if (reportEquipmentData) {
+      reportEquipmentData.forEach(re => {
+        if (re.equipment?.operator_id) {
+          operatorIds.add(re.equipment.operator_id);
+        }
+      });
+    }
     
     // Calculate total fuel used
-    const totalFuel = reportEquipment
+    const totalFuel = reportEquipmentData
       ?.reduce((sum, item) => sum + (item.fuel_amount || 0), 0) || 0;
     
     return {
@@ -272,11 +279,13 @@ export const fetchAdminDashboardStats = async (
     
     // Count unique operators
     const operatorIds = new Set<string>();
-    equipmentData?.forEach(eq => {
-      if (eq.operator_id) {
-        operatorIds.add(eq.operator_id);
-      }
-    });
+    if (equipmentData) {
+      equipmentData.forEach(eq => {
+        if (eq.operator_id) {
+          operatorIds.add(eq.operator_id);
+        }
+      });
+    }
     const operatorCount = operatorIds.size;
     
     // Fetch reports for fuel calculation, filtered by region/engineer/date if provided
@@ -306,7 +315,7 @@ export const fetchAdminDashboardStats = async (
     const { data: reports } = await reportsQuery;
     
     // Fetch report_equipment to calculate fuel by type
-    const { data: reportEquipment } = await supabase
+    const { data: reportEquipmentData } = await supabase
       .from('report_equipment')
       .select(`
         fuel_amount,
@@ -316,13 +325,16 @@ export const fetchAdminDashboardStats = async (
     
     // Calculate fuel by type
     const fuelMap = new Map<string, number>();
-    reportEquipment?.forEach(item => {
-      if (item.equipment?.fuel_type) {
-        const fuelType = item.equipment.fuel_type;
-        const currentAmount = fuelMap.get(fuelType) || 0;
-        fuelMap.set(fuelType, currentAmount + (item.fuel_amount || 0));
-      }
-    });
+    
+    if (reportEquipmentData) {
+      reportEquipmentData.forEach(item => {
+        if (item.equipment?.fuel_type) {
+          const fuelType = item.equipment.fuel_type;
+          const currentAmount = fuelMap.get(fuelType) || 0;
+          fuelMap.set(fuelType, currentAmount + (item.fuel_amount || 0));
+        }
+      });
+    }
     
     const fuelByType = Array.from(fuelMap.entries()).map(([type, amount]) => ({
       type,
