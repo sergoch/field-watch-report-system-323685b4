@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,7 +76,10 @@ export default function UsersManagementPage() {
     }
 
     const engineerUsers = usersData.users
-      .filter(user => (user.user_metadata as UserMetadata)?.role === 'engineer')
+      .filter(user => {
+        const metadata = user.user_metadata as UserMetadata;
+        return metadata?.role === 'engineer';
+      })
       .map(user => {
         const metadata = user.user_metadata as UserMetadata;
         const regionId = metadata?.region_id;
