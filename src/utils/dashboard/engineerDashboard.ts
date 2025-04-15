@@ -80,13 +80,13 @@ export const fetchEngineerDashboardStats = async (
       .select(`
         report_id, 
         workers:worker_id(
-          id, full_name, personal_id
+          id, full_name, personal_id, daily_salary
         )
       `)
       .in('report_id', (recentReports || []).map(r => r.id));
     
     const workersSet = new Set<string>();
-    const workers: { id: string; fullName: string; personalId: string }[] = [];
+    const workers: Worker[] = [];
     
     if (reportWorkersData) {
       reportWorkersData.forEach(rw => {
@@ -95,11 +95,12 @@ export const fetchEngineerDashboardStats = async (
           if (!workersSet.has(workerId)) {
             workersSet.add(workerId);
             // Cast the workers object properly to access its properties
-            const worker = rw.workers as unknown as { id: string; full_name: string; personal_id: string };
+            const worker = rw.workers as unknown as { id: string; full_name: string; personal_id: string; daily_salary: number };
             workers.push({
               id: workerId,
               fullName: worker.full_name || '',
-              personalId: worker.personal_id || ''
+              personalId: worker.personal_id || '',
+              dailySalary: worker.daily_salary || 0
             });
           }
         }
@@ -113,13 +114,13 @@ export const fetchEngineerDashboardStats = async (
         report_id, 
         fuel_amount,
         equipment:equipment_id(
-          id, type, license_plate, operator_id, fuel_type
+          id, type, license_plate, operator_id, operator_name, fuel_type, daily_salary
         )
       `)
       .in('report_id', (recentReports || []).map(r => r.id));
     
     const equipmentSet = new Set<string>();
-    const equipment: { id: string; type: string; licensePlate: string }[] = [];
+    const equipment: Equipment[] = [];
     
     if (reportEquipmentData) {
       reportEquipmentData.forEach(re => {
@@ -128,11 +129,24 @@ export const fetchEngineerDashboardStats = async (
           if (!equipmentSet.has(equipId)) {
             equipmentSet.add(equipId);
             // Cast the equipment object properly to access its properties
-            const equip = re.equipment as unknown as { id: string; type: string; license_plate: string; operator_id: string };
+            const equip = re.equipment as unknown as { 
+              id: string; 
+              type: string; 
+              license_plate: string; 
+              operator_id: string;
+              operator_name: string;
+              fuel_type: string;
+              daily_salary: number;
+            };
+            
             equipment.push({
               id: equipId,
               type: equip.type || '',
-              licensePlate: equip.license_plate || ''
+              licensePlate: equip.license_plate || '',
+              operatorId: equip.operator_id || '',
+              operatorName: equip.operator_name || '',
+              fuelType: equip.fuel_type as "diesel" | "gasoline" || 'diesel',
+              dailySalary: equip.daily_salary || 0
             });
           }
         }
