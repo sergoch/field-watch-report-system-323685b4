@@ -6,9 +6,9 @@ import { DeleteEquipmentDialog } from "@/components/equipment/DeleteEquipmentDia
 import { ViewEquipmentDialog } from "@/components/equipment/ViewEquipmentDialog";
 import { EquipmentHeader } from "@/components/equipment/EquipmentHeader";
 import { EquipmentSearch } from "@/components/equipment/EquipmentSearch";
-import { useEquipmentProvider } from "@/components/equipment/EquipmentProvider";
+import { EquipmentProvider, useEquipmentContext } from "@/contexts/EquipmentProvider";
 
-export default function EquipmentPage() {
+function EquipmentContent() {
   const {
     equipment,
     loading,
@@ -29,7 +29,7 @@ export default function EquipmentPage() {
     handleDelete,
     handleCreateNew,
     handleExportToExcel
-  } = useEquipmentProvider();
+  } = useEquipmentContext();
 
   return (
     <div className="space-y-6">
@@ -94,5 +94,13 @@ export default function EquipmentPage() {
         isDeleting={isDeleting}
       />
     </div>
+  );
+}
+
+export default function EquipmentPage() {
+  return (
+    <EquipmentProvider>
+      <EquipmentContent />
+    </EquipmentProvider>
   );
 }

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,8 @@ export default function IncidentsPage() {
 
   useEffect(() => {
     const fetchIncidents = async () => {
+      if (!user) return;
+
       try {
         let query = supabase.from('incidents').select(`
           *,
@@ -51,8 +54,10 @@ export default function IncidentsPage() {
           )
         `);
         
-        if (!isAdmin && user?.id) {
-          query = query.eq('engineer_id', user.id.toString());
+        // Make sure we're using a proper UUID as a string, not a number
+        if (!isAdmin && user.id) {
+          const engineerId = typeof user.id === 'string' ? user.id : String(user.id);
+          query = query.eq('engineer_id', engineerId);
         }
         
         const { data, error } = await query;
@@ -65,7 +70,22 @@ export default function IncidentsPage() {
             variant: "destructive"
           });
         } else if (data) {
-          setIncidents(data);
+          setIncidents(data.map(incident => ({
+            ...incident,
+            // Transform from snake_case to camelCase for consistency
+            id: incident.id,
+            date: incident.date,
+            type: incident.type,
+            description: incident.description,
+            imageUrl: incident.image_url,
+            engineerId: incident.engineer_id,
+            regionId: incident.region_id,
+            location: {
+              latitude: incident.latitude || 0,
+              longitude: incident.longitude || 0
+            },
+            regions: incident.regions
+          })));
         }
       } catch (err) {
         console.error('Exception when fetching incidents:', err);

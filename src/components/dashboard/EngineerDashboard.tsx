@@ -5,17 +5,15 @@ import { FileText, AlertTriangle, Users, Calendar, Truck, Briefcase } from "luci
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DateRange } from "react-day-picker";
-import { TimeFrame } from "@/utils/dashboard";
+import { TimeFrame, fetchEngineerDashboardStats } from "@/utils/dashboard";
 import { StatsCard } from "./stats/StatsCard";
 import { WorkersTable } from "./tables/WorkersTable";
 import { EquipmentTable } from "./tables/EquipmentTable";
 import { RecentReportsTable } from "./tables/RecentReportsTable";
 import { RecentIncidentsTable } from "./tables/RecentIncidentsTable";
 import { DashboardFilters } from "./filters/DashboardFilters";
-import { supabase } from "@/integrations/supabase/client";
 import { Report, Incident, Worker, Equipment } from "@/types";
-import { formatDateForQuery } from "@/utils/dashboard/dateUtils";
-import { getDateRangeFromTimeFrame } from "@/utils/dashboard/dateUtils";
+import { useToast } from "@/hooks/use-toast";
 
 interface DashboardStats {
   totalReports: number;
@@ -30,6 +28,7 @@ interface DashboardStats {
 
 export function EngineerDashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("week");
   const [stats, setStats] = useState<DashboardStats>({
@@ -47,225 +46,31 @@ export function EngineerDashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       if (!user?.id) return;
+      
       setIsLoading(true);
       
       try {
-        // Get date range for filtering
-        const range = getDateRangeFromTimeFrame(timeFrame, dateRange);
-        const fromDate = formatDateForQuery(range.from);
-        const toDate = formatDateForQuery(range.to);
-
-        // Fetch reports count
-        const { count: totalReports } = await supabase
-          .from('reports')
-          .select('*', { count: 'exact' })
-          .eq('engineer_id', user.id)
-          .gte('date', fromDate)
-          .lte('date', toDate);
-
-        // Fetch incidents count
-        const { count: totalIncidents } = await supabase
-          .from('incidents')
-          .select('*', { count: 'exact' })
-          .eq('engineer_id', user.id)
-          .gte('date', fromDate)
-          .lte('date', toDate);
-
-        // Fetch recent reports
-        const { data: recentReportsData } = await supabase
-          .from('reports')
-          .select(`
-            *,
-            regions (
-              name
-            )
-          `)
-          .eq('engineer_id', user.id)
-          .gte('date', fromDate)
-          .lte('date', toDate)
-          .order('date', { ascending: false })
-          .limit(5);
-          
-        // Fetch recent incidents
-        const { data: recentIncidentsData } = await supabase
-          .from('incidents')
-          .select(`
-            *,
-            regions (
-              name
-            )
-          `)
-          .eq('engineer_id', user.id)
-          .gte('date', fromDate)
-          .lte('date', toDate)
-          .order('date', { ascending: false })
-          .limit(5);
-
-        // Transform data from snake_case to camelCase
-        const recentReports = recentReportsData ? recentReportsData.map(report => ({
-          ...report,
-          id: report.id,
-          date: report.date,
-          description: report.description,
-          regionId: report.region_id,
-          engineerId: report.engineer_id,
-          materialsUsed: report.materials_used,
-          materialsReceived: report.materials_received,
-          totalFuel: report.total_fuel,
-          totalWorkerSalary: report.total_worker_salary,
-          regions: report.regions
-        })) : [];
-
-        const recentIncidents = recentIncidentsData ? recentIncidentsData.map(incident => ({
-          ...incident,
-          id: incident.id,
-          date: incident.date,
-          type: incident.type,
-          imageUrl: incident.image_url,
-          description: incident.description,
-          engineerId: incident.engineer_id,
-          regionId: incident.region_id,
-          location: {
-            latitude: incident.latitude,
-            longitude: incident.longitude
-          },
-          regions: incident.regions
-        })) : [];
-
-        // Get all report IDs to fetch related data
-        const reportIds = recentReports.map(report => report.id);
-
-        // Fetch workers data
-        const { data: reportWorkersData } = await supabase
-          .from('report_workers')
-          .select(`
-            workers:worker_id (
-              id, 
-              full_name, 
-              personal_id
-            )
-          `)
-          .in('report_id', reportIds);
-
-        // Collect unique workers
-        const workersSet = new Set<string>();
-        const workers: Worker[] = [];
-        
-        if (reportWorkersData) {
-          reportWorkersData.forEach(rw => {
-            if (rw.workers) {
-              const worker = rw.workers as any;
-              if (worker.id && !workersSet.has(worker.id)) {
-                workersSet.add(worker.id);
-                workers.push({
-                  id: worker.id,
-                  fullName: worker.full_name,
-                  personalId: worker.personal_id,
-                  dailySalary: 0 // Default value as it might not be available in this context
-                });
-              }
-            }
-          });
-        }
-
-        // Fetch equipment data
-        const { data: reportEquipmentData } = await supabase
-          .from('report_equipment')
-          .select(`
-            fuel_amount,
-            equipment:equipment_id (
-              id,
-              type,
-              license_plate,
-              operator_id,
-              fuel_type,
-              operator_name
-            )
-          `)
-          .in('report_id', reportIds);
-
-        // Collect unique equipment and calculate fuel
-        const equipmentSet = new Set<string>();
-        const equipment: Equipment[] = [];
-        let totalFuel = 0;
-        const operatorIds = new Set<string>();
-        
-        if (reportEquipmentData) {
-          reportEquipmentData.forEach(re => {
-            if (re.equipment) {
-              const equip = re.equipment as any;
-              if (equip.id && !equipmentSet.has(equip.id)) {
-                equipmentSet.add(equip.id);
-                equipment.push({
-                  id: equip.id,
-                  type: equip.type,
-                  licensePlate: equip.license_plate,
-                  fuelType: equip.fuel_type,
-                  operatorName: equip.operator_name,
-                  operatorId: equip.operator_id,
-                  dailySalary: 0 // Default value
-                });
-              }
-              // Track operators
-              if (equip.operator_id) {
-                operatorIds.add(equip.operator_id);
-              }
-            }
-            // Sum fuel amounts
-            totalFuel += Number(re.fuel_amount || 0);
-          });
-        }
-
-        // Update the dashboard stats
-        setStats({
-          totalReports: totalReports || 0,
-          totalIncidents: totalIncidents || 0,
-          totalWorkers: workers,
-          totalEquipment: equipment,
-          totalOperators: operatorIds.size,
-          totalFuel,
-          recentReports: recentReports,
-          recentIncidents: recentIncidents
+        // Fetch dashboard stats from our utility function
+        const dashboardStats = await fetchEngineerDashboardStats(user.id, {
+          timeFrame,
+          dateRange
         });
+        
+        setStats(dashboardStats);
       } catch (error) {
         console.error('Error fetching engineer dashboard stats:', error);
+        toast({
+          title: "Error loading dashboard",
+          description: "Could not load dashboard information. Please try again.",
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchStats();
-
-    // Set up realtime subscriptions for reports and incidents
-    const reportsChannel = supabase
-      .channel('reports-changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'reports',
-        filter: `engineer_id=eq.${user?.id}`
-      }, () => {
-        fetchStats();
-      })
-      .subscribe();
-      
-    const incidentsChannel = supabase
-      .channel('incidents-changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'incidents',
-        filter: `engineer_id=eq.${user?.id}`
-      }, () => {
-        fetchStats();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(reportsChannel);
-      supabase.removeChannel(incidentsChannel);
-    };
-  }, [user?.id, timeFrame, dateRange]);
+  }, [user?.id, timeFrame, dateRange, toast]);
 
   const handleTimeFrameChange = (value: TimeFrame) => {
     setTimeFrame(value);
@@ -343,8 +148,8 @@ export function EngineerDashboard() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <RecentReportsTable reports={stats.recentReports} />
-            <RecentIncidentsTable incidents={stats.recentIncidents} />
+            <RecentReportsTable reports={stats.recentReports} isLoading={isLoading} />
+            <RecentIncidentsTable incidents={stats.recentIncidents} isLoading={isLoading} />
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 flex-wrap">

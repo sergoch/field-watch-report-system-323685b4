@@ -6,9 +6,9 @@ import { EditWorkerDialog } from "@/components/workers/EditWorkerDialog";
 import { DeleteWorkerDialog } from "@/components/workers/DeleteWorkerDialog";
 import { WorkersHeader } from "@/components/workers/WorkersHeader";
 import { WorkersSearch } from "@/components/workers/WorkersSearch";
-import { useWorkersProvider } from "@/components/workers/WorkersProvider";
+import { WorkerProvider, useWorkerContext } from "@/contexts/WorkerProvider";
 
-export default function WorkersPage() {
+function WorkersContent() {
   const {
     workers,
     loading,
@@ -29,7 +29,7 @@ export default function WorkersPage() {
     handleDelete,
     handleCreateNew,
     handleExportToExcel
-  } = useWorkersProvider();
+  } = useWorkerContext();
 
   return (
     <div className="space-y-6">
@@ -93,5 +93,13 @@ export default function WorkersPage() {
         isDeleting={isDeleting}
       />
     </div>
+  );
+}
+
+export default function WorkersPage() {
+  return (
+    <WorkerProvider>
+      <WorkersContent />
+    </WorkerProvider>
   );
 }
