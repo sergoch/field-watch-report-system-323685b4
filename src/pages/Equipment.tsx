@@ -108,7 +108,10 @@ function EquipmentContent() {
         equipment={deleteEquipment}
         isOpen={!!deleteEquipment}
         onClose={() => setDeleteEquipment(null)}
-        onConfirm={handleDelete}
+        onConfirm={() => {
+          handleDelete();
+          setDeleteEquipment(null);
+        }}
         isDeleting={isDeleting}
       />
     </div>

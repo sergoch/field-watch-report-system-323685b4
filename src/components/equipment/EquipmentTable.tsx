@@ -48,7 +48,10 @@ export function EquipmentTable({
     );
   }
 
-  if (equipment.length === 0) {
+  // Ensure equipment is an array
+  const validEquipment = Array.isArray(equipment) ? equipment : [];
+
+  if (validEquipment.length === 0) {
     return (
       <div className="rounded-md border">
         <Table>
@@ -90,17 +93,24 @@ export function EquipmentTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {equipment.map((equip) => {
+          {validEquipment.map((equip) => {
+            if (!equip || !equip.id) return null;
+            
+            // Normalize equipment data to handle different property names
+            const licensePlate = equip.licensePlate || equip.license_plate || '';
+            const dailySalary = equip.dailySalary || equip.dailysalary || 0;
+            const fuelType = equip.fuelType || equip.fueltype || '';
+            
             const region = regions.find(r => r.id === equip.region_id);
             
             return (
               <TableRow key={equip.id}>
                 <TableCell className="font-medium">{equip.type}</TableCell>
-                <TableCell>{equip.licensePlate}</TableCell>
+                <TableCell>{licensePlate}</TableCell>
                 <TableCell>{equip.operatorName}</TableCell>
                 <TableCell>{region?.name || "Unassigned"}</TableCell>
-                <TableCell className="capitalize">{equip.fuelType}</TableCell>
-                <TableCell>{equip.dailySalary}</TableCell>
+                <TableCell className="capitalize">{fuelType}</TableCell>
+                <TableCell>{dailySalary}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button 
