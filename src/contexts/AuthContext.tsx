@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types';
@@ -8,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   error: string | null;
-  login: (identifier: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string, isAdmin: boolean) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -87,14 +86,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     };
   }, []);
   
-  const login = async (identifier: string, password: string) => {
+  const login = async (identifier: string, password: string, isAdmin: boolean) => {
     try {
       setError(null);
       
-      // Check if the identifier is an email or username
-      const isEmail = identifier.includes('@');
-      
-      if (isEmail) {
+      if (isAdmin) {
         // Admin login via Supabase auth
         const { data, error } = await supabase.auth.signInWithPassword({
           email: identifier,
@@ -120,11 +116,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           throw error || new Error('Invalid engineer credentials');
         }
         
-        // Create a session for the engineer
+        // Create a session for the engineer using their email from the RPC result
         const engineerData = data[0];
+        
+        // Sign in with the engineer's email and password
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: engineerData.email,
-          password: password,
+          password,
         });
         
         if (signInError) {

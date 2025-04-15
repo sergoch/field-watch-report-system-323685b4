@@ -37,7 +37,8 @@ export function LoginForm() {
 
     try {
       setIsSubmitting(true);
-      await login(loginIdentifier, password);
+      // Pass isAdmin flag based on the active tab
+      await login(loginIdentifier, password, activeTab === 'admin');
       
       // If login successful, navigation is handled by the protected route
     } catch (error) {
