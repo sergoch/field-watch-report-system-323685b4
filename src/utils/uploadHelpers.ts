@@ -1,86 +1,70 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-
-const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/jpg"];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+import { supabase } from '@/integrations/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
+import { toast } from '@/hooks/use-toast';
 
 export async function uploadReportImage(file: File): Promise<string | null> {
-  // Validate file type
-  if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-    toast({
-      title: "Invalid file type",
-      description: "Please upload a JPEG or PNG image.",
-      variant: "destructive",
-    });
-    return null;
-  }
-
-  // Validate file size
-  if (file.size > MAX_FILE_SIZE) {
-    toast({
-      title: "File too large",
-      description: "Please upload an image smaller than 5MB.",
-      variant: "destructive",
-    });
-    return null;
-  }
-
   try {
-    // First check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      console.error("Auth error during upload:", authError);
+    // Verify authentication
+    const { data: auth, error: authError } = await supabase.auth.getUser();
+    if (authError || !auth.user) {
+      console.error('Authentication error during file upload:', authError);
       toast({
         title: "Authentication Error",
-        description: "You must be logged in to upload images. Please log in again.",
-        variant: "destructive",
+        description: "You must be logged in to upload files. Please log in again.",
+        variant: "destructive"
       });
       return null;
     }
-    
-    // Generate a unique filename
+
+    // Validate file
+    if (!file || !(file instanceof File)) {
+      console.error('Invalid file provided to uploadReportImage');
+      return null;
+    }
+
+    // Generate a unique filename with uuid
     const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}_${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-    
-    console.log("Uploading with authenticated user ID:", user.id);
-    console.log("File upload params:", {
-      bucket: "report_images", 
-      path: `incidents/${fileName}`,
-      contentType: file.type
-    });
-    
-    // Upload the file to the correct bucket with public access
-    const { error: uploadError, data } = await supabase.storage
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const filePath = `${auth.user.id}/${fileName}`;
+
+    console.log(`Uploading file to report_images/${filePath}`);
+
+    // Upload file to Supabase Storage
+    const { data, error } = await supabase.storage
       .from('report_images')
-      .upload(`incidents/${fileName}`, file, {
-        upsert: false, // Don't overwrite existing files
-        contentType: file.type // Set the content type explicitly
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type
       });
 
-    if (uploadError) {
-      console.error('Upload error details:', uploadError);
+    if (error) {
+      console.error('Error uploading file:', error);
       toast({
         title: "Upload Failed",
-        description: `Error: ${uploadError.message || "Could not upload image"}`,
-        variant: "destructive",
+        description: error.message || "Could not upload image. Please try again.",
+        variant: "destructive"
       });
       return null;
     }
-
-    // Get the public URL
-    const { data: { publicUrl } } = supabase.storage
+    
+    console.log('File uploaded successfully:', data.path);
+    
+    // Get the public URL for the uploaded file
+    const { data: urlData } = supabase.storage
       .from('report_images')
-      .getPublicUrl(`incidents/${fileName}`);
-
-    console.log("Upload successful, public URL:", publicUrl);
-    return publicUrl;
+      .getPublicUrl(data.path);
+      
+    console.log('Public URL:', urlData.publicUrl);
+    
+    return urlData.publicUrl;
   } catch (error: any) {
-    console.error('Error uploading image:', error);
+    console.error('Exception in uploadReportImage:', error);
     toast({
       title: "Upload Error",
-      description: error.message || "Failed to upload image. Please try again.",
-      variant: "destructive",
+      description: error.message || "An unexpected error occurred during upload.",
+      variant: "destructive"
     });
     return null;
   }

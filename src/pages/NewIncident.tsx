@@ -43,6 +43,8 @@ export default function NewIncidentPage() {
           variant: "destructive",
         });
         navigate("/login", { replace: true });
+      } else {
+        console.log("Authenticated in NewIncident page:", data.session.user.id);
       }
     };
     
@@ -160,27 +162,43 @@ export default function NewIncidentPage() {
       return;
     }
     
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !authData.user) {
-      toast({
-        title: "Authentication Error",
-        description: "You must be logged in to report an incident. Please log in again.",
-        variant: "destructive",
-      });
-      console.error("Auth error:", authError);
-      navigate("/login");
-      return;
-    }
-    
-    const engineerId = authData.user.id;
-    console.log("Authenticated engineer ID:", engineerId);
-    
     setIsSubmitting(true);
     
     try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error("Auth error:", authError);
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to report an incident. Please log in again.",
+          variant: "destructive",
+        });
+        navigate("/login");
+        return;
+      }
+      
+      if (!authData.user) {
+        console.error("No authenticated user found");
+        toast({
+          title: "Authentication Error",
+          description: "No authenticated user found. Please log in again.",
+          variant: "destructive",
+        });
+        navigate("/login");
+        return;
+      }
+      
+      const engineerId = authData.user.id;
+      console.log("Authenticated engineer ID:", engineerId);
+      
       const imageUrl = await uploadReportImage(imageFile);
       if (!imageUrl) {
+        toast({
+          title: "Image Upload Failed",
+          description: "Could not upload the incident image. Please try again.",
+          variant: "destructive",
+        });
         setIsSubmitting(false);
         return;
       }

@@ -40,8 +40,24 @@ export function RecentReportsTable({ reports: externalReports, isLoading: extern
       setIsLoading(true);
       try {
         // Get the authenticated user
-        const { data: authData } = await supabase.auth.getUser();
-        if (!authData.user) return;
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        
+        if (authError) {
+          console.error('Auth error when fetching reports:', authError);
+          toast({
+            title: "Authentication Error",
+            description: "Could not verify your authentication status.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (!authData.user) {
+          console.error('No authenticated user found');
+          return;
+        }
+        
+        console.log('Fetching reports for engineer:', authData.user.id);
         
         const { data, error } = await supabase
           .from('reports')
@@ -64,6 +80,8 @@ export function RecentReportsTable({ reports: externalReports, isLoading: extern
           });
           return;
         }
+        
+        console.log('Fetched reports:', data);
         
         // Transform data
         const processedReports = data.map(report => ({
