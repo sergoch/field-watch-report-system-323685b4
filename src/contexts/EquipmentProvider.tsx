@@ -136,19 +136,13 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
 
     setIsSaving(true);
     try {
-      if (!userIsAdmin && formData.region_id && user?.assignedRegions) {
-        if (!user.assignedRegions.includes(formData.region_id)) {
-          throw new Error("You don't have permission to assign equipment to this region");
-        }
-      }
-      
       await updateEquipment(editEquipment.id, {
         type: formData.type,
-        licensePlate: formData.licensePlate,
-        operatorName: formData.operatorName,
-        operatorId: formData.operatorId,
-        dailysalary: formData.dailysalary,
-        fuelType: formData.fuelType,
+        license_plate: formData.licensePlate,
+        operator_name: formData.operatorName,
+        operator_id: formData.operatorId,
+        dailysalary: formData.dailySalary,
+        fueltype: formData.fuelType,
         region_id: formData.region_id || null
       });
       
@@ -204,25 +198,14 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
     
     setIsSaving(true);
     try {
-      let regionId = formData.region_id;
-      if (!userIsAdmin && !regionId && user?.regionId) {
-        regionId = user.regionId;
-      }
-      
-      if (!userIsAdmin && regionId && user?.assignedRegions) {
-        if (!user.assignedRegions.includes(regionId)) {
-          throw new Error("You don't have permission to add equipment to this region");
-        }
-      }
-      
       await addEquipment({
         type: formData.type,
-        licensePlate: formData.licensePlate,
-        operatorName: formData.operatorName,
-        operatorId: formData.operatorId,
-        dailysalary: formData.dailysalary,
-        fuelType: formData.fuelType,
-        region_id: regionId || null
+        license_plate: formData.licensePlate,
+        operator_name: formData.operatorName,
+        operator_id: formData.operatorId,
+        dailysalary: formData.dailySalary,
+        fueltype: formData.fuelType,
+        region_id: formData.region_id || null
       });
       
       toast({

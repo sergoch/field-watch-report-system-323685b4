@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { EditDialog } from "@/components/crud/EditDialog";
 import { Input } from "@/components/ui/input";
@@ -11,7 +10,7 @@ interface EquipmentFormData {
   licensePlate: string;
   operatorName: string;
   operatorId: string;
-  dailysalary: number; // Changed from dailySalary to dailysalary to match DB column name
+  dailySalary: number; 
   fuelType: 'diesel' | 'gasoline';
   region_id: string;
 }
@@ -40,12 +39,11 @@ export function EditEquipmentDialog({
     licensePlate: equipment?.licensePlate || '',
     operatorName: equipment?.operatorName || '',
     operatorId: equipment?.operatorId || '',
-    dailysalary: equipment?.dailysalary || 0, // Use dailysalary from DB
+    dailySalary: equipment?.dailySalary || 0,
     fuelType: equipment?.fuelType || 'diesel',
     region_id: equipment?.region_id || ''
   });
 
-  // Update form data when equipment changes
   useEffect(() => {
     if (equipment) {
       setFormData({
@@ -53,18 +51,17 @@ export function EditEquipmentDialog({
         licensePlate: equipment.licensePlate,
         operatorName: equipment.operatorName,
         operatorId: equipment.operatorId,
-        dailysalary: equipment.dailysalary || equipment.dailySalary || 0, // Handle both formats
+        dailySalary: equipment.dailySalary || equipment.dailysalary || 0,
         fuelType: equipment.fuelType,
         region_id: equipment.region_id || ''
       });
     } else if (isCreating) {
-      // Reset form when creating a new equipment
       setFormData({
         type: '',
         licensePlate: '',
         operatorName: '',
         operatorId: '',
-        dailysalary: 0,
+        dailySalary: 0,
         fuelType: 'diesel',
         region_id: regions.length > 0 ? regions[0].id : ''
       });
@@ -142,12 +139,12 @@ export function EditEquipmentDialog({
           </Select>
         </div>
         <div>
-          <Label htmlFor="dailysalary">Daily Salary (GEL)</Label>
+          <Label htmlFor="dailySalary">Daily Salary (GEL)</Label>
           <Input
-            id="dailysalary"
+            id="dailySalary"
             type="number"
-            value={formData.dailysalary}
-            onChange={(e) => setFormData({...formData, dailysalary: Number(e.target.value)})}
+            value={formData.dailySalary}
+            onChange={(e) => setFormData({...formData, dailySalary: Number(e.target.value)})}
             className="mt-1"
           />
         </div>
