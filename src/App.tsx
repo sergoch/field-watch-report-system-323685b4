@@ -1,14 +1,14 @@
-
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useEffect } from "react";
 import { initializeApp } from "@/utils/supabase/realtime";
 
+// Pages
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Reports from "./pages/Reports";
@@ -27,7 +27,7 @@ import Settings from "./pages/Settings";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60000, // 1 minute
+      staleTime: 60000,
       refetchOnWindowFocus: true,
       retry: 1
     }
@@ -35,7 +35,6 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
-  // Initialize app with realtime capabilities
   useEffect(() => {
     initializeApp().then(() => {
       console.log("App initialized with realtime capabilities");
@@ -52,7 +51,6 @@ const App = () => {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
-              
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               
               <Route path="/dashboard" element={
@@ -80,7 +78,6 @@ const App = () => {
                   <NewIncident />
                 </ProtectedRoute>
               } />
-              
               <Route path="/users" element={
                 <ProtectedRoute allowedRoles={["admin"]}>
                   <Users />
@@ -111,7 +108,6 @@ const App = () => {
                   <Settings />
                 </ProtectedRoute>
               } />
-              
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
@@ -119,6 +115,6 @@ const App = () => {
       </TooltipProvider>
     </QueryClientProvider>
   );
-}
+};
 
 export default App;
