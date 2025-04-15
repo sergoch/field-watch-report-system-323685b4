@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,8 +33,7 @@ export function LoginForm() {
       setIsSubmitting(true);
       await login(username, password);
       
-      // If login successful, navigate to dashboard
-      navigate('/dashboard');
+      // If login successful, navigation is handled by the protected route
     } catch (error) {
       console.error('Login error:', error);
       // Error is now handled in the context
