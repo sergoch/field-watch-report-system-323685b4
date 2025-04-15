@@ -212,8 +212,7 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
         fullName: formData.fullName,
         personalId: formData.personalId,
         dailySalary: formData.dailySalary,
-        region_id: regionId || null,
-        created_at: new Date().toISOString()
+        region_id: regionId || null
       });
       
       toast({

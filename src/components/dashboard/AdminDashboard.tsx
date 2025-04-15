@@ -38,8 +38,7 @@ export function AdminDashboard() {
       
       if (error) throw error;
       
-      // We don't need to call setStats directly, as the Supabase realtime subscriptions 
-      // in the useAdminDashboardData hook will trigger a refetch automatically
+      // The Supabase realtime subscriptions in useAdminDashboardData will trigger a refetch
       
       toast({
         title: "Test Data Cleaned",

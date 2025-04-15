@@ -1,6 +1,8 @@
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
+import { hasRegionAccess } from "@/utils/auth";
 
 interface EquipmentRegionFilterProps {
   regions: { id: string, name: string }[];
@@ -10,7 +12,21 @@ interface EquipmentRegionFilterProps {
 }
 
 export function EquipmentRegionFilter({ regions, selectedRegion, onRegionChange, isAdmin }: EquipmentRegionFilterProps) {
-  if (!isAdmin || regions.length <= 1) return null;
+  const { user } = useAuth();
+  
+  // Only show region filter if user is admin or has multiple regions
+  if ((!isAdmin && regions.length <= 1) || regions.length === 0) {
+    return null;
+  }
+
+  // Filter regions based on user access if not an admin
+  const accessibleRegions = isAdmin 
+    ? regions 
+    : regions.filter(region => hasRegionAccess(user, region.id));
+
+  if (accessibleRegions.length === 0) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col space-y-1.5 mb-4">
@@ -23,8 +39,8 @@ export function EquipmentRegionFilter({ regions, selectedRegion, onRegionChange,
           <SelectValue placeholder="Select Region" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All Regions</SelectItem>
-          {regions.map((region) => (
+          {isAdmin && <SelectItem value="all">All Regions</SelectItem>}
+          {accessibleRegions.map((region) => (
             <SelectItem key={region.id} value={region.id}>{region.name}</SelectItem>
           ))}
         </SelectContent>

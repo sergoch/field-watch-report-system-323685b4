@@ -1,216 +1,162 @@
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Plus, Edit, Trash2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Region } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
-import { DeleteConfirmDialog } from '@/components/crud/DeleteConfirmDialog';
-import { EditDialog } from '@/components/crud/EditDialog';
-import { Label } from '@/components/ui/label';
-import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { RegionsManager } from "@/components/settings/RegionsManager";
+import { useAuth } from "@/contexts/AuthContext";
+import { isAdmin } from "@/utils/auth";
 
 export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState("general");
   const { toast } = useToast();
-  const [newRegionName, setNewRegionName] = useState('');
-  const [isAddingRegion, setIsAddingRegion] = useState(false);
-  const [editRegion, setEditRegion] = useState<Region | null>(null);
-  const [deleteRegion, setDeleteRegion] = useState<Region | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const { user } = useAuth();
+  const userIsAdmin = isAdmin(user);
+
+  // App configuration
+  const [appName, setAppName] = useState("Amradzi Construction");
+  const [companyName, setCompanyName] = useState("Amradzi Construction Management");
   
-  const { 
-    data: regions,
-    add: addRegion,
-    update: updateRegion,
-    remove: removeRegion
-  } = useSupabaseRealtime<Region>({ 
-    tableName: 'regions' 
+  // Labels for tabs
+  const [tabLabels, setTabLabels] = useState({
+    workers: "Workers",
+    equipment: "Equipment",
+    reports: "Reports",
+    incidents: "Incidents",
+    analytics: "Analytics"
   });
-
-  const handleAddRegion = async () => {
-    if (!newRegionName.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Region name is required",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsAddingRegion(true);
-    try {
-      await addRegion({
-        name: newRegionName.trim()
-      });
-      
-      toast({
-        title: "Region Added",
-        description: `${newRegionName} has been added successfully`
-      });
-      
-      setNewRegionName('');
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Could not add region",
-        variant: "destructive"
-      });
-    } finally {
-      setIsAddingRegion(false);
-    }
+  
+  const handleSaveGeneral = () => {
+    // In a real implementation, this would save to Supabase
+    toast({
+      title: "Settings Saved",
+      description: "General settings have been updated successfully."
+    });
   };
-
-  const handleUpdateRegion = async () => {
-    if (!editRegion) return;
-    
-    if (!editRegion.name.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Region name is required",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsUpdating(true);
-    try {
-      await updateRegion(editRegion.id, {
-        name: editRegion.name.trim()
-      });
-      
-      toast({
-        title: "Region Updated",
-        description: `Region has been updated successfully`
-      });
-      
-      setEditRegion(null);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Could not update region",
-        variant: "destructive"
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleDeleteRegion = async () => {
-    if (!deleteRegion) return;
-    
-    setIsDeleting(true);
-    try {
-      await removeRegion(deleteRegion.id);
-      
-      toast({
-        title: "Region Deleted",
-        description: `${deleteRegion.name} has been removed`
-      });
-      
-      setDeleteRegion(null);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Could not delete region",
-        variant: "destructive"
-      });
-    } finally {
-      setIsDeleting(false);
-    }
+  
+  const handleSaveLabels = () => {
+    // In a real implementation, this would save to Supabase
+    toast({
+      title: "Labels Updated",
+      description: "UI labels have been updated successfully."
+    });
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">Manage regions and system settings</p>
-      </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Regions</CardTitle>
-          <CardDescription>Manage construction site regions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            <Input
-              placeholder="New region name"
-              value={newRegionName}
-              onChange={(e) => setNewRegionName(e.target.value)}
-              className="sm:max-w-xs"
-            />
-            <Button onClick={handleAddRegion} disabled={isAddingRegion}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Region
-            </Button>
-          </div>
-          
-          <div className="space-y-2">
-            {regions.length > 0 ? (
-              regions.map((region) => (
-                <div key={region.id} className="flex justify-between items-center p-3 border rounded-md">
-                  <div>
-                    {region.name}
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => setEditRegion(region)}
-                    >
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Edit</span>
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => setDeleteRegion(region)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                      <span className="sr-only">Delete</span>
-                    </Button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center p-4 text-muted-foreground">
-                No regions found. Add a new region above.
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <EditDialog
-        isOpen={!!editRegion}
-        onClose={() => setEditRegion(null)}
-        title="Edit Region"
-        description="Update region details"
-        onSave={handleUpdateRegion}
-        isSaving={isUpdating}
-      >
+    <div className="flex flex-col space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <Label htmlFor="regionName">Region Name</Label>
-          <Input
-            id="regionName"
-            value={editRegion?.name || ''}
-            onChange={(e) => setEditRegion(prev => prev ? { ...prev, name: e.target.value } : null)}
-            className="mt-1"
-          />
+          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground">
+            Manage your application settings and preferences
+          </p>
         </div>
-      </EditDialog>
+      </div>
 
-      <DeleteConfirmDialog
-        isOpen={!!deleteRegion}
-        onClose={() => setDeleteRegion(null)}
-        onConfirm={handleDeleteRegion}
-        title="Delete Region"
-        description={`Are you sure you want to delete ${deleteRegion?.name}? This will affect all reports, incidents, and other data associated with this region.`}
-        isDeleting={isDeleting}
-      />
+      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid grid-cols-2 md:grid-cols-3 mb-6">
+          <TabsTrigger value="general">General</TabsTrigger>
+          {userIsAdmin && <TabsTrigger value="regions">Regions</TabsTrigger>}
+          <TabsTrigger value="labels">UI Labels</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="general" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>General Settings</CardTitle>
+              <CardDescription>
+                Configure application general settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="appName">Application Name</Label>
+                <Input
+                  id="appName"
+                  value={appName}
+                  onChange={(e) => setAppName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="companyName">Company Name</Label>
+                <Input
+                  id="companyName"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                />
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleSaveGeneral}>Save Changes</Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        
+        {userIsAdmin && (
+          <TabsContent value="regions" className="space-y-4">
+            <RegionsManager />
+          </TabsContent>
+        )}
+        
+        <TabsContent value="labels" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>UI Labels</CardTitle>
+              <CardDescription>
+                Customize the labels shown in the navigation and tabs
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="workersLabel">Workers Label</Label>
+                <Input
+                  id="workersLabel"
+                  value={tabLabels.workers}
+                  onChange={(e) => setTabLabels(prev => ({ ...prev, workers: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="equipmentLabel">Equipment Label</Label>
+                <Input
+                  id="equipmentLabel"
+                  value={tabLabels.equipment}
+                  onChange={(e) => setTabLabels(prev => ({ ...prev, equipment: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reportsLabel">Reports Label</Label>
+                <Input
+                  id="reportsLabel"
+                  value={tabLabels.reports}
+                  onChange={(e) => setTabLabels(prev => ({ ...prev, reports: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="incidentsLabel">Incidents Label</Label>
+                <Input
+                  id="incidentsLabel"
+                  value={tabLabels.incidents}
+                  onChange={(e) => setTabLabels(prev => ({ ...prev, incidents: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="analyticsLabel">Analytics Label</Label>
+                <Input
+                  id="analyticsLabel"
+                  value={tabLabels.analytics}
+                  onChange={(e) => setTabLabels(prev => ({ ...prev, analytics: e.target.value }))}
+                />
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleSaveLabels}>Save Changes</Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

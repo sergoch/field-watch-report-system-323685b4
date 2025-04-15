@@ -222,8 +222,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
         operatorId: formData.operatorId,
         dailySalary: formData.dailySalary,
         fuelType: formData.fuelType,
-        region_id: regionId || null,
-        created_at: new Date().toISOString()
+        region_id: regionId || null
       });
       
       toast({

@@ -1,5 +1,6 @@
 
 import { User } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Checks if the given user is an admin
@@ -38,4 +39,25 @@ export function hasRegionAccess(user: User | null | undefined, regionId: string 
   
   // Default to no access
   return false;
+}
+
+/**
+ * Fetches all regions assigned to an engineer
+ * @param engineerId The ID of the engineer to fetch regions for
+ * @returns An array of region IDs
+ */
+export async function getEngineerRegions(engineerId: string): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('engineer_regions')
+      .select('region_id')
+      .eq('engineer_id', engineerId);
+      
+    if (error) throw error;
+    
+    return data.map(item => item.region_id);
+  } catch (err) {
+    console.error('Error fetching engineer regions:', err);
+    return [];
+  }
 }

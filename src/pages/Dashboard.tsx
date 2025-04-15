@@ -3,19 +3,20 @@ import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { EngineerDashboard } from "@/components/dashboard/EngineerDashboard";
 import { AdminDashboard } from "@/components/dashboard/AdminDashboard";
+import { isAdmin } from "@/utils/auth";
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const userIsAdmin = isAdmin(user);
 
   useEffect(() => {
     // Page title
-    document.title = isAdmin ? "Admin Dashboard | Amradzi V2.0" : "Engineer Dashboard | Amradzi V2.0";
-  }, [isAdmin]);
+    document.title = userIsAdmin ? "Admin Dashboard | Amradzi V2.0" : "Engineer Dashboard | Amradzi V2.0";
+  }, [userIsAdmin]);
 
   if (!user) {
-    return <div>Loading...</div>;
+    return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading...</div>;
   }
 
-  return isAdmin ? <AdminDashboard /> : <EngineerDashboard />;
+  return userIsAdmin ? <AdminDashboard /> : <EngineerDashboard />;
 }
