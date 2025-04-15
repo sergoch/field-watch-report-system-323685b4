@@ -50,18 +50,19 @@ export function EngineerDashboard() {
       setIsLoading(true);
       
       try {
-        // Fetch dashboard stats from our utility function
+        // Fetch dashboard stats using our utility function
         const dashboardStats = await fetchEngineerDashboardStats(user.id, {
           timeFrame,
-          dateRange
+          dateRange,
+          regionId: user.regionId
         });
         
         setStats(dashboardStats);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching engineer dashboard stats:', error);
         toast({
           title: "Error loading dashboard",
-          description: "Could not load dashboard information. Please try again.",
+          description: error.message || "Could not load dashboard information. Please try again.",
           variant: "destructive"
         });
       } finally {
@@ -69,8 +70,10 @@ export function EngineerDashboard() {
       }
     };
 
-    fetchStats();
-  }, [user?.id, timeFrame, dateRange, toast]);
+    if (user) {
+      fetchStats();
+    }
+  }, [user, timeFrame, dateRange, toast]);
 
   const handleTimeFrameChange = (value: TimeFrame) => {
     setTimeFrame(value);
@@ -79,13 +82,17 @@ export function EngineerDashboard() {
     }
   };
 
+  const regionInfo = user?.assignedRegions?.length 
+    ? (user.assignedRegions.length === 1 ? 'Assigned Region' : `${user.assignedRegions.length} Assigned Regions`)
+    : 'No Assigned Regions';
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-sky-900">Welcome, {user?.name}</h1>
           <p className="text-muted-foreground">
-            Engineer Dashboard - {user?.regionId ? 'Assigned Region' : 'All Regions'}
+            Engineer Dashboard - {regionInfo}
           </p>
         </div>
         <DashboardFilters

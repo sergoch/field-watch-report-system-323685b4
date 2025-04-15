@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { User } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getEngineerRegions } from '@/utils/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -64,13 +65,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (engineerError) throw engineerError;
               
               if (engineerData) {
+                // Get all assigned regions for this engineer
+                const assignedRegions = await getEngineerRegions(supabaseUser.id);
+                
                 const engineerUser: User = {
                   id: supabaseUser.id,
                   name: engineerData.full_name || engineerData.username,
                   email: engineerData.email || '',
                   role: 'engineer',
                   engineerId: engineerData.id,
-                  assignedRegions: engineerData.engineer_regions.map(er => er.region_id)
+                  assignedRegions: assignedRegions,
+                  // Use first assigned region as primary if available
+                  regionId: assignedRegions.length > 0 ? assignedRegions[0] : undefined
                 };
                 
                 localStorage.setItem('amradzi_user', JSON.stringify(engineerUser));
@@ -79,6 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           } catch (err) {
             console.error('Error processing user data:', err);
+            toast({
+              title: "Authentication Error",
+              description: "Failed to load user profile data.",
+              variant: "destructive",
+            });
             setUser(null);
           }
           
@@ -121,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [toast]);
 
   const login = async (usernameOrEmail: string, password: string) => {
     try {
@@ -197,9 +208,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await supabase.auth.signOut();
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
       // The rest is handled by onAuthStateChange
     } catch (error) {
       console.error('Logout error:', error);
+      toast({
+        title: "Logout Failed",
+        description: "An error occurred while logging out.",
+        variant: "destructive",
+      });
       throw error;
     }
   };

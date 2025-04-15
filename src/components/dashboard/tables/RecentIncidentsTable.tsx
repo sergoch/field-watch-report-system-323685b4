@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Eye } from "lucide-react";
+import { Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Table,
@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { isAdmin } from "@/utils/auth";
 
 interface RecentIncidentsTableProps {
   incidents?: Incident[];
@@ -29,22 +30,22 @@ export function RecentIncidentsTable({ incidents: externalIncidents, isLoading: 
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
+  const userIsAdmin = isAdmin(user);
   
-  // Fetch engineer-specific incidents if not provided externally
+  // Fetch incidents if not provided externally
   useEffect(() => {
     if (externalIncidents) {
       setEngineerIncidents(externalIncidents);
+      setIsLoading(false);
       return;
     }
     
-    const fetchEngineerIncidents = async () => {
+    const fetchIncidents = async () => {
       setIsLoading(true);
       try {
-        // Get the authenticated user
-        const { data: authData } = await supabase.auth.getUser();
-        if (!authData.user) return;
+        if (!user?.id) return;
         
-        const { data, error } = await supabase
+        let query = supabase
           .from('incidents')
           .select(`
             *,
@@ -52,15 +53,21 @@ export function RecentIncidentsTable({ incidents: externalIncidents, isLoading: 
               name
             )
           `)
-          .eq('engineer_id', authData.user.id)
           .order('date', { ascending: false })
           .limit(5);
+          
+        // Filter by engineer ID if not admin
+        if (!userIsAdmin) {
+          query = query.eq('engineer_id', user.id);
+        }
+        
+        const { data, error } = await query;
         
         if (error) {
-          console.error('Error fetching engineer incidents:', error);
+          console.error('Error fetching incidents:', error);
           toast({
             title: "Error loading incidents",
-            description: "Could not load your recent incidents.",
+            description: "Could not load recent incidents.",
             variant: "destructive",
           });
           return;
@@ -71,7 +78,8 @@ export function RecentIncidentsTable({ incidents: externalIncidents, isLoading: 
           ...incident,
           id: incident.id,
           date: incident.date,
-          type: incident.type,
+          type: incident.type as any,
+          imageUrl: incident.image_url || '',
           regionId: incident.region_id,
           regions: incident.regions,
           engineerId: incident.engineer_id,
@@ -83,21 +91,23 @@ export function RecentIncidentsTable({ incidents: externalIncidents, isLoading: 
         
         setEngineerIncidents(processedIncidents);
       } catch (err) {
-        console.error('Error in fetchEngineerIncidents:', err);
+        console.error('Error in fetchIncidents:', err);
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchEngineerIncidents();
-  }, [externalIncidents, toast, user]);
+    if (user) {
+      fetchIncidents();
+    }
+  }, [externalIncidents, toast, user, userIsAdmin]);
 
   // Function to determine badge color based on incident type
   const getBadgeVariant = (type: string) => {
     switch (type.toLowerCase()) {
       case "cut": return "destructive";
       case "damage": return "destructive";
-      case "parallel": return "secondary"; // Changed from "warning" to "secondary"
+      case "parallel": return "secondary";
       case "node": return "outline";
       case "hydrant": return "secondary";
       case "chamber": return "default";

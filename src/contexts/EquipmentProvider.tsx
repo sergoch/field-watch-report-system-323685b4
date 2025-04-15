@@ -6,6 +6,7 @@ import { Equipment } from "@/types";
 import * as XLSX from 'xlsx';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthContext";
+import { isAdmin } from "@/utils/auth";
 
 export interface EquipmentFormData {
   type: string;
@@ -55,6 +56,14 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
   const [isCreating, setIsCreating] = useState(false);
   const [regions, setRegions] = useState<{ id: string, name: string }[]>([]);
   
+  // Determine proper filter based on user role and assigned regions
+  const userIsAdmin = isAdmin(user);
+  const filter = userIsAdmin 
+    ? undefined 
+    : user?.assignedRegions && user.assignedRegions.length > 0 
+      ? { region_id: user.assignedRegions } 
+      : undefined;
+  
   const { 
     data: equipment, 
     loading, 
@@ -65,30 +74,45 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
     refetch
   } = useSupabaseRealtime<Equipment>({ 
     tableName: 'equipment',
-    filter: user?.regionId ? `region_id=${user.regionId}` : undefined
+    filter: filter
   });
 
   useEffect(() => {
     const fetchRegions = async () => {
-      const { data, error } = await supabase
-        .from('regions')
-        .select('id, name')
-        .order('name');
+      try {
+        let query = supabase.from('regions').select('id, name').order('name');
         
-      if (error) {
-        console.error('Error fetching regions:', error);
+        // If engineer with assigned regions, only fetch those regions
+        if (!userIsAdmin && user?.assignedRegions && user.assignedRegions.length > 0) {
+          query = query.in('id', user.assignedRegions);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error('Error fetching regions:', error);
+          toast({
+            title: "Error fetching regions",
+            description: error.message,
+            variant: "destructive"
+          });
+        } else if (data) {
+          setRegions(data);
+        }
+      } catch (err: any) {
+        console.error('Exception when fetching regions:', err);
         toast({
-          title: "Error fetching regions",
-          description: error.message,
+          title: "Error",
+          description: err.message || "Failed to load regions",
           variant: "destructive"
         });
-      } else if (data) {
-        setRegions(data);
       }
     };
     
-    fetchRegions();
-  }, [toast]);
+    if (user) {
+      fetchRegions();
+    }
+  }, [toast, user, userIsAdmin]);
 
   const filteredEquipment = equipment.filter(equip => 
     equip.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -103,6 +127,13 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
 
     setIsSaving(true);
     try {
+      // Make sure the region ID is one that this user can access
+      if (!userIsAdmin && formData.region_id && user?.assignedRegions) {
+        if (!user.assignedRegions.includes(formData.region_id)) {
+          throw new Error("You don't have permission to assign equipment to this region");
+        }
+      }
+      
       await updateEquipment(editEquipment.id, {
         type: formData.type,
         licensePlate: formData.licensePlate,
@@ -135,6 +166,13 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
     
     setIsDeleting(true);
     try {
+      // Check if this user has permission to delete this equipment
+      if (!userIsAdmin && deleteEquipment.region_id) {
+        if (user?.assignedRegions && !user.assignedRegions.includes(deleteEquipment.region_id)) {
+          throw new Error("You don't have permission to delete equipment from this region");
+        }
+      }
+      
       await removeEquipment(deleteEquipment.id);
       
       toast({
@@ -159,6 +197,19 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
     
     setIsSaving(true);
     try {
+      // If engineer and no region provided, use their primary region
+      let regionId = formData.region_id;
+      if (!userIsAdmin && !regionId && user?.regionId) {
+        regionId = user.regionId;
+      }
+      
+      // Make sure the region ID is one that this user can access
+      if (!userIsAdmin && regionId && user?.assignedRegions) {
+        if (!user.assignedRegions.includes(regionId)) {
+          throw new Error("You don't have permission to add equipment to this region");
+        }
+      }
+      
       await addEquipment({
         type: formData.type,
         licensePlate: formData.licensePlate,
@@ -166,7 +217,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
         operatorId: formData.operatorId,
         dailySalary: formData.dailySalary,
         fuelType: formData.fuelType,
-        region_id: formData.region_id || user?.regionId || null
+        region_id: regionId || null
       });
       
       toast({
@@ -186,8 +237,8 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const validateForm = (formData: EquipmentFormData) => {
-    if (!formData.type) {
+  const validateForm = (formData: EquipmentFormData): boolean => {
+    if (!formData.type.trim()) {
       toast({
         title: "Validation Error",
         description: "Equipment type is required",
@@ -195,7 +246,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       });
       return false;
     }
-    if (!formData.licensePlate) {
+    if (!formData.licensePlate.trim()) {
       toast({
         title: "Validation Error",
         description: "License plate is required",
@@ -203,7 +254,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       });
       return false;
     }
-    if (!formData.operatorName) {
+    if (!formData.operatorName.trim()) {
       toast({
         title: "Validation Error",
         description: "Operator name is required",
@@ -211,7 +262,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       });
       return false;
     }
-    if (!formData.operatorId) {
+    if (!formData.operatorId.trim()) {
       toast({
         title: "Validation Error",
         description: "Operator ID is required",
@@ -227,6 +278,17 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       });
       return false;
     }
+    
+    // For engineers, a region is required
+    if (!userIsAdmin && !formData.region_id && !user?.regionId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a region for this equipment",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
     return true;
   };
 

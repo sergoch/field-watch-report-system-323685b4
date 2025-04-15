@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { isAdmin } from "@/utils/auth";
 
 interface RecentReportsTableProps {
   reports?: Report[];
@@ -28,38 +29,22 @@ export function RecentReportsTable({ reports: externalReports, isLoading: extern
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
+  const userIsAdmin = isAdmin(user);
   
-  // Fetch engineer-specific reports if not provided externally
+  // Fetch reports if not provided externally
   useEffect(() => {
     if (externalReports) {
       setEngineerReports(externalReports);
+      setIsLoading(false);
       return;
     }
     
-    const fetchEngineerReports = async () => {
+    const fetchReports = async () => {
       setIsLoading(true);
       try {
-        // Get the authenticated user
-        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (!user?.id) return;
         
-        if (authError) {
-          console.error('Auth error when fetching reports:', authError);
-          toast({
-            title: "Authentication Error",
-            description: "Could not verify your authentication status.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        if (!authData.user) {
-          console.error('No authenticated user found');
-          return;
-        }
-        
-        console.log('Fetching reports for engineer:', authData.user.id);
-        
-        const { data, error } = await supabase
+        let query = supabase
           .from('reports')
           .select(`
             *,
@@ -67,21 +52,25 @@ export function RecentReportsTable({ reports: externalReports, isLoading: extern
               name
             )
           `)
-          .eq('engineer_id', authData.user.id)
           .order('date', { ascending: false })
           .limit(5);
+          
+        // Filter by engineer ID if not admin
+        if (!userIsAdmin) {
+          query = query.eq('engineer_id', user.id);
+        }
+        
+        const { data, error } = await query;
         
         if (error) {
-          console.error('Error fetching engineer reports:', error);
+          console.error('Error fetching reports:', error);
           toast({
             title: "Error loading reports",
-            description: "Could not load your recent reports.",
+            description: "Could not load recent reports.",
             variant: "destructive",
           });
           return;
         }
-        
-        console.log('Fetched reports:', data);
         
         // Transform data
         const processedReports = data.map(report => ({
@@ -89,19 +78,22 @@ export function RecentReportsTable({ reports: externalReports, isLoading: extern
           id: report.id,
           date: report.date,
           totalFuel: report.total_fuel,
-          regions: report.regions
+          regions: report.regions,
+          regionId: report.region_id
         }));
         
         setEngineerReports(processedReports);
       } catch (err) {
-        console.error('Error in fetchEngineerReports:', err);
+        console.error('Error in fetchReports:', err);
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchEngineerReports();
-  }, [externalReports, toast, user]);
+    if (user) {
+      fetchReports();
+    }
+  }, [externalReports, toast, user, userIsAdmin]);
   
   const isLoadingReports = externalLoading || isLoading;
   const reports = externalReports || engineerReports;

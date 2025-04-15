@@ -1,71 +1,52 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { v4 as uuidv4 } from 'uuid';
-import { toast } from '@/hooks/use-toast';
+import { supabase } from "@/integrations/supabase/client";
 
+// Upload report image to Supabase storage
 export async function uploadReportImage(file: File): Promise<string | null> {
   try {
-    // Verify authentication
-    const { data: auth, error: authError } = await supabase.auth.getUser();
-    if (authError || !auth.user) {
-      console.error('Authentication error during file upload:', authError);
-      toast({
-        title: "Authentication Error",
-        description: "You must be logged in to upload files. Please log in again.",
-        variant: "destructive"
-      });
+    // Get authenticated user
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !authData.user) {
+      console.error('Auth error when uploading image:', authError);
       return null;
     }
-
-    // Validate file
-    if (!file || !(file instanceof File)) {
-      console.error('Invalid file provided to uploadReportImage');
-      return null;
-    }
-
-    // Generate a unique filename with uuid
+    
+    const userId = authData.user.id;
     const fileExt = file.name.split('.').pop();
-    const fileName = `${uuidv4()}.${fileExt}`;
-    const filePath = `${auth.user.id}/${fileName}`;
-
-    console.log(`Uploading file to report_images/${filePath}`);
-
-    // Upload file to Supabase Storage
-    const { data, error } = await supabase.storage
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `${userId}/${fileName}`;
+    
+    // Upload to report_images bucket
+    const { error: uploadError } = await supabase.storage
       .from('report_images')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: file.type
-      });
-
-    if (error) {
-      console.error('Error uploading file:', error);
-      toast({
-        title: "Upload Failed",
-        description: error.message || "Could not upload image. Please try again.",
-        variant: "destructive"
-      });
+      .upload(filePath, file);
+    
+    if (uploadError) {
+      console.error('Error uploading image:', uploadError);
       return null;
     }
     
-    console.log('File uploaded successfully:', data.path);
-    
-    // Get the public URL for the uploaded file
-    const { data: urlData } = supabase.storage
+    // Get the public URL
+    const { data } = supabase.storage
       .from('report_images')
-      .getPublicUrl(data.path);
-      
-    console.log('Public URL:', urlData.publicUrl);
+      .getPublicUrl(filePath);
     
-    return urlData.publicUrl;
-  } catch (error: any) {
-    console.error('Exception in uploadReportImage:', error);
-    toast({
-      title: "Upload Error",
-      description: error.message || "An unexpected error occurred during upload.",
-      variant: "destructive"
-    });
+    return data.publicUrl;
+  } catch (err) {
+    console.error('Exception when uploading image:', err);
     return null;
   }
+}
+
+// Generate a file name
+export function generateFileName(prefix: string = ''): string {
+  const timestamp = new Date().getTime();
+  const random = Math.floor(Math.random() * 1000);
+  return `${prefix}${timestamp}_${random}`;
+}
+
+// Get file extension from file object
+export function getFileExtension(file: File): string {
+  return file.name.split('.').pop() || '';
 }

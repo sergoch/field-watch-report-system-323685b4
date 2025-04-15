@@ -6,6 +6,7 @@ import { Worker } from "@/types";
 import * as XLSX from 'xlsx';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthContext";
+import { isAdmin } from "@/utils/auth";
 
 export interface WorkerFormData {
   fullName: string;
@@ -52,6 +53,14 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
   const [isCreating, setIsCreating] = useState(false);
   const [regions, setRegions] = useState<{ id: string, name: string }[]>([]);
   
+  // Determine proper filter based on user role and assigned regions
+  const userIsAdmin = isAdmin(user);
+  const filter = userIsAdmin 
+    ? undefined 
+    : user?.assignedRegions && user.assignedRegions.length > 0 
+      ? { region_id: user.assignedRegions } 
+      : undefined;
+  
   const { 
     data: workers, 
     loading, 
@@ -62,30 +71,45 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
     refetch
   } = useSupabaseRealtime<Worker>({ 
     tableName: 'workers',
-    filter: user?.regionId ? `region_id=${user.regionId}` : undefined
+    filter: filter
   });
 
   useEffect(() => {
     const fetchRegions = async () => {
-      const { data, error } = await supabase
-        .from('regions')
-        .select('id, name')
-        .order('name');
+      try {
+        let query = supabase.from('regions').select('id, name').order('name');
         
-      if (error) {
-        console.error('Error fetching regions:', error);
+        // If engineer with assigned regions, only fetch those regions
+        if (!userIsAdmin && user?.assignedRegions && user.assignedRegions.length > 0) {
+          query = query.in('id', user.assignedRegions);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error('Error fetching regions:', error);
+          toast({
+            title: "Error fetching regions",
+            description: error.message,
+            variant: "destructive"
+          });
+        } else if (data) {
+          setRegions(data);
+        }
+      } catch (err: any) {
+        console.error('Exception when fetching regions:', err);
         toast({
-          title: "Error fetching regions",
-          description: error.message,
+          title: "Error",
+          description: err.message || "Failed to load regions",
           variant: "destructive"
         });
-      } else if (data) {
-        setRegions(data);
       }
     };
     
-    fetchRegions();
-  }, [toast]);
+    if (user) {
+      fetchRegions();
+    }
+  }, [toast, user, userIsAdmin]);
 
   const filteredWorkers = workers.filter(worker => 
     worker.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -95,8 +119,17 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
   const handleSaveEdit = async (formData: WorkerFormData) => {
     if (!editWorker) return;
 
+    if (!validateForm(formData)) return;
+
     setIsSaving(true);
     try {
+      // Make sure the region ID is one that this user can access
+      if (!userIsAdmin && formData.region_id && user?.assignedRegions) {
+        if (!user.assignedRegions.includes(formData.region_id)) {
+          throw new Error("You don't have permission to assign workers to this region");
+        }
+      }
+      
       await updateWorker(editWorker.id, {
         fullName: formData.fullName,
         personalId: formData.personalId,
@@ -126,6 +159,13 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
     
     setIsDeleting(true);
     try {
+      // Check if this user has permission to delete this worker
+      if (!userIsAdmin && deleteWorker.region_id) {
+        if (user?.assignedRegions && !user.assignedRegions.includes(deleteWorker.region_id)) {
+          throw new Error("You don't have permission to delete workers from this region");
+        }
+      }
+      
       await removeWorker(deleteWorker.id);
       
       toast({
@@ -146,13 +186,28 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
   };
 
   const handleCreateNew = async (formData: WorkerFormData) => {
+    if (!validateForm(formData)) return;
+    
     setIsSaving(true);
     try {
+      // If engineer and no region provided, use their primary region
+      let regionId = formData.region_id;
+      if (!userIsAdmin && !regionId && user?.regionId) {
+        regionId = user.regionId;
+      }
+      
+      // Make sure the region ID is one that this user can access
+      if (!userIsAdmin && regionId && user?.assignedRegions) {
+        if (!user.assignedRegions.includes(regionId)) {
+          throw new Error("You don't have permission to add workers to this region");
+        }
+      }
+      
       await addWorker({
         fullName: formData.fullName,
         personalId: formData.personalId,
         dailySalary: formData.dailySalary,
-        region_id: formData.region_id || user?.regionId || null
+        region_id: regionId || null
       });
       
       toast({
@@ -170,6 +225,45 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const validateForm = (formData: WorkerFormData): boolean => {
+    if (!formData.fullName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Worker's full name is required",
+        variant: "destructive"
+      });
+      return false;
+    }
+    if (!formData.personalId.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Worker's personal ID is required",
+        variant: "destructive"
+      });
+      return false;
+    }
+    if (formData.dailySalary <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Daily salary must be greater than zero",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    // For engineers, a region is required
+    if (!userIsAdmin && !formData.region_id && !user?.regionId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a region for this worker",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    return true;
   };
 
   const handleExportToExcel = () => {

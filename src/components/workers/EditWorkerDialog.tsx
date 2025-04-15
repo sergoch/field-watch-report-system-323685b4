@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { EditDialog } from "@/components/crud/EditDialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +40,7 @@ export function EditWorkerDialog({
   });
 
   // Update form data when worker changes
-  useState(() => {
+  useEffect(() => {
     if (worker) {
       setFormData({
         fullName: worker.fullName,
@@ -48,8 +48,16 @@ export function EditWorkerDialog({
         dailySalary: worker.dailySalary,
         region_id: worker.region_id || ''
       });
+    } else if (isCreating) {
+      // Reset form when creating a new worker
+      setFormData({
+        fullName: '',
+        personalId: '',
+        dailySalary: 0,
+        region_id: regions.length > 0 ? regions[0].id : ''
+      });
     }
-  });
+  }, [worker, isCreating, regions]);
 
   const handleSubmit = async () => {
     await onSave(formData);
@@ -94,12 +102,15 @@ export function EditWorkerDialog({
               <SelectValue placeholder="Select Region" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Unassigned</SelectItem>
-              {regions.map(region => (
-                <SelectItem key={region.id} value={region.id}>
-                  {region.name}
-                </SelectItem>
-              ))}
+              {regions.length === 0 ? (
+                <SelectItem value="">No regions available</SelectItem>
+              ) : (
+                regions.map(region => (
+                  <SelectItem key={region.id} value={region.id}>
+                    {region.name}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
