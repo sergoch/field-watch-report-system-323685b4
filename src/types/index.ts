@@ -38,8 +38,8 @@ export interface Equipment {
   operator_name?: string; // Database snake_case
   operatorId: string; // Frontend camelCase
   operator_id?: string; // Database snake_case
-  dailySalary: number; // Frontend camelCase
-  dailysalary?: number; // Database snake_case
+  dailySalary?: number; // Frontend camelCase 
+  dailysalary: number; // Database snake_case - updated to match what's used
   region_id?: string;
 }
 

@@ -144,11 +144,11 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       
       await updateEquipment(editEquipment.id, {
         type: formData.type,
-        license_plate: formData.licensePlate,
-        operator_name: formData.operatorName,
-        operator_id: formData.operatorId,
+        licensePlate: formData.licensePlate,
+        operatorName: formData.operatorName,
+        operatorId: formData.operatorId,
         dailysalary: formData.dailysalary,
-        fuel_type: formData.fuelType,
+        fuelType: formData.fuelType,
         region_id: formData.region_id || null
       });
       
