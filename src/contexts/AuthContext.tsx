@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -87,23 +87,55 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     };
   }, []);
   
-  const login = async (email: string, password: string) => {
+  const login = async (identifier: string, password: string) => {
     try {
       setError(null);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
       
-      if (error) {
-        throw error;
+      // Check if the identifier is an email or username
+      const isEmail = identifier.includes('@');
+      
+      if (isEmail) {
+        // Admin login via Supabase auth
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: identifier,
+          password,
+        });
+        
+        if (error) {
+          throw error;
+        }
+        
+        toast({
+          title: "Admin login successful",
+          description: "Welcome back!",
+        });
+      } else {
+        // Engineer login via custom RPC function
+        const { data, error } = await supabase.rpc('authenticate_engineer', {
+          p_username: identifier,
+          p_password: password
+        });
+        
+        if (error || !data || data.length === 0) {
+          throw error || new Error('Invalid engineer credentials');
+        }
+        
+        // Create a session for the engineer
+        const engineerData = data[0];
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: engineerData.email,
+          password: password,
+        });
+        
+        if (signInError) {
+          throw signInError;
+        }
+        
+        toast({
+          title: "Engineer login successful",
+          description: `Welcome back, ${engineerData.full_name}!`,
+        });
       }
-      
-      toast({
-        title: "Login successful",
-        description: "Welcome back!",
-      });
-      
     } catch (error: any) {
       console.error('Login error:', error);
       setError(error.message || "An error occurred during login");
