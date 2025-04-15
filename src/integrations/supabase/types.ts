@@ -84,7 +84,7 @@ export type Database = {
       equipment: {
         Row: {
           created_at: string | null
-          daily_salary: number
+          dailysalary: number
           fuel_type: string
           id: string
           license_plate: string
@@ -95,7 +95,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          daily_salary: number
+          dailysalary: number
           fuel_type: string
           id?: string
           license_plate: string
@@ -106,7 +106,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
-          daily_salary?: number
+          dailysalary?: number
           fuel_type?: string
           id?: string
           license_plate?: string

@@ -11,7 +11,7 @@ interface EquipmentFormData {
   licensePlate: string;
   operatorName: string;
   operatorId: string;
-  dailySalary: number;
+  dailysalary: number; // Changed from dailySalary to dailysalary to match DB column name
   fuelType: 'diesel' | 'gasoline';
   region_id: string;
 }
@@ -40,7 +40,7 @@ export function EditEquipmentDialog({
     licensePlate: equipment?.licensePlate || '',
     operatorName: equipment?.operatorName || '',
     operatorId: equipment?.operatorId || '',
-    dailySalary: equipment?.dailySalary || 0,
+    dailysalary: equipment?.dailySalary || 0, // Use dailySalary from types but store as dailysalary
     fuelType: equipment?.fuelType || 'diesel',
     region_id: equipment?.region_id || ''
   });
@@ -53,7 +53,7 @@ export function EditEquipmentDialog({
         licensePlate: equipment.licensePlate,
         operatorName: equipment.operatorName,
         operatorId: equipment.operatorId,
-        dailySalary: equipment.dailySalary,
+        dailysalary: equipment.dailySalary, // Use dailySalary from types but store as dailysalary
         fuelType: equipment.fuelType,
         region_id: equipment.region_id || ''
       });
@@ -64,7 +64,7 @@ export function EditEquipmentDialog({
         licensePlate: '',
         operatorName: '',
         operatorId: '',
-        dailySalary: 0,
+        dailysalary: 0, // Changed from dailySalary to dailysalary
         fuelType: 'diesel',
         region_id: regions.length > 0 ? regions[0].id : ''
       });
@@ -142,12 +142,12 @@ export function EditEquipmentDialog({
           </Select>
         </div>
         <div>
-          <Label htmlFor="dailySalary">Daily Salary (GEL)</Label>
+          <Label htmlFor="dailysalary">Daily Salary (GEL)</Label>
           <Input
-            id="dailySalary"
+            id="dailysalary"
             type="number"
-            value={formData.dailySalary}
-            onChange={(e) => setFormData({...formData, dailySalary: Number(e.target.value)})}
+            value={formData.dailysalary}
+            onChange={(e) => setFormData({...formData, dailysalary: Number(e.target.value)})}
             className="mt-1"
           />
         </div>

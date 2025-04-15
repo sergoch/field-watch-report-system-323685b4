@@ -30,11 +30,16 @@ export interface Worker {
 export interface Equipment {
   id: string;
   type: string;
-  licensePlate: string;
-  fuelType: "diesel" | "gasoline";
-  operatorName: string;
-  operatorId: string;
-  dailySalary: number;
+  licensePlate: string; // Frontend camelCase
+  license_plate?: string; // Database snake_case
+  fuelType: "diesel" | "gasoline"; // Frontend camelCase
+  fuel_type?: string; // Database snake_case
+  operatorName: string; // Frontend camelCase
+  operator_name?: string; // Database snake_case
+  operatorId: string; // Frontend camelCase
+  operator_id?: string; // Database snake_case
+  dailySalary: number; // Frontend camelCase
+  dailysalary?: number; // Database snake_case
   region_id?: string;
 }
 

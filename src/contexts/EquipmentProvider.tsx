@@ -12,7 +12,7 @@ export interface EquipmentFormData {
   licensePlate: string;
   operatorName: string;
   operatorId: string;
-  dailySalary: number;
+  dailysalary: number;
   fuelType: 'diesel' | 'gasoline';
   region_id?: string;
 }
@@ -144,11 +144,11 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       
       await updateEquipment(editEquipment.id, {
         type: formData.type,
-        licensePlate: formData.licensePlate,
-        operatorName: formData.operatorName,
-        operatorId: formData.operatorId,
-        dailySalary: formData.dailySalary,
-        fuelType: formData.fuelType,
+        license_plate: formData.licensePlate,
+        operator_name: formData.operatorName,
+        operator_id: formData.operatorId,
+        dailysalary: formData.dailysalary,
+        fuel_type: formData.fuelType,
         region_id: formData.region_id || null
       });
       
@@ -217,11 +217,11 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       
       await addEquipment({
         type: formData.type,
-        licensePlate: formData.licensePlate,
-        operatorName: formData.operatorName,
-        operatorId: formData.operatorId,
-        dailySalary: formData.dailySalary,
-        fuelType: formData.fuelType,
+        license_plate: formData.licensePlate,
+        operator_name: formData.operatorName,
+        operator_id: formData.operatorId,
+        dailysalary: formData.dailysalary,
+        fuel_type: formData.fuelType,
         region_id: regionId || null
       });
       
@@ -275,7 +275,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       });
       return false;
     }
-    if (formData.dailySalary <= 0) {
+    if (formData.dailysalary <= 0) {
       toast({
         title: "Validation Error",
         description: "Daily salary must be greater than 0",
@@ -307,7 +307,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
           "Operator Name": equip.operatorName,
           "Operator ID": equip.operatorId,
           "Fuel Type": equip.fuelType,
-          "Daily Salary (GEL)": equip.dailySalary,
+          "Daily Salary (GEL)": equip.dailysalary,
           "Region": region?.name || "Unassigned"
         };
       });
