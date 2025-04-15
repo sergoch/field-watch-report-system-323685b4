@@ -40,7 +40,7 @@ export function EditEquipmentDialog({
     licensePlate: equipment?.licensePlate || '',
     operatorName: equipment?.operatorName || '',
     operatorId: equipment?.operatorId || '',
-    dailysalary: equipment?.dailySalary || 0, // Use dailySalary from types but store as dailysalary
+    dailysalary: equipment?.dailysalary || 0, // Use dailysalary from DB
     fuelType: equipment?.fuelType || 'diesel',
     region_id: equipment?.region_id || ''
   });
@@ -53,7 +53,7 @@ export function EditEquipmentDialog({
         licensePlate: equipment.licensePlate,
         operatorName: equipment.operatorName,
         operatorId: equipment.operatorId,
-        dailysalary: equipment.dailySalary, // Use dailySalary from types but store as dailysalary
+        dailysalary: equipment.dailysalary || equipment.dailySalary || 0, // Handle both formats
         fuelType: equipment.fuelType,
         region_id: equipment.region_id || ''
       });
@@ -64,7 +64,7 @@ export function EditEquipmentDialog({
         licensePlate: '',
         operatorName: '',
         operatorId: '',
-        dailysalary: 0, // Changed from dailySalary to dailysalary
+        dailysalary: 0,
         fuelType: 'diesel',
         region_id: regions.length > 0 ? regions[0].id : ''
       });
