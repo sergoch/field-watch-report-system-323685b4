@@ -94,7 +94,7 @@ export function useEquipmentProvider() {
         licensePlate: formData.licensePlate,
         operatorName: formData.operatorName,
         operatorId: formData.operatorId,
-        dailySalary: formData.dailySalary,
+        dailysalary: formData.dailySalary, // Map dailySalary to dailysalary
         fuelType: formData.fuelType,
         region_id: formData.region_id || null
       });
@@ -150,7 +150,7 @@ export function useEquipmentProvider() {
         licensePlate: formData.licensePlate,
         operatorName: formData.operatorName,
         operatorId: formData.operatorId,
-        dailySalary: formData.dailySalary,
+        dailysalary: formData.dailySalary, // Changed from dailySalary to dailysalary to match the required type
         fuelType: formData.fuelType,
         region_id: formData.region_id || null
       });
