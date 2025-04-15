@@ -195,6 +195,7 @@ export type Database = {
           description: string | null
           engineer_id: string
           id: string
+          image_url: string | null
           materials_received: string | null
           materials_used: string | null
           region_id: string | null
@@ -208,6 +209,7 @@ export type Database = {
           description?: string | null
           engineer_id: string
           id?: string
+          image_url?: string | null
           materials_received?: string | null
           materials_used?: string | null
           region_id?: string | null
@@ -221,6 +223,7 @@ export type Database = {
           description?: string | null
           engineer_id?: string
           id?: string
+          image_url?: string | null
           materials_received?: string | null
           materials_used?: string | null
           region_id?: string | null

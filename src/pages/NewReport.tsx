@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { uploadReportImage } from "@/utils/uploadHelpers";
 
 export default function NewReportPage() {
   const [date, setDate] = useState<Date>(new Date());
@@ -26,20 +26,19 @@ export default function NewReportPage() {
   const [materialsUsed, setMaterialsUsed] = useState("");
   const [materialsReceived, setMaterialsReceived] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  
-  // States for available workers and equipment
+
   const [availableWorkers, setAvailableWorkers] = useState<{ id: string, fullName: string, dailySalary: number }[]>([]);
   const [availableEquipment, setAvailableEquipment] = useState<{ id: string, type: string, licensePlate: string }[]>([]);
 
-  // Fetch regions, workers, and equipment on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch regions
         const { data: regionData, error: regionError } = await supabase
           .from('regions')
           .select('id, name')
@@ -54,7 +53,6 @@ export default function NewReportPage() {
           });
         } else if (regionData) {
           setRegions(regionData);
-          // If user has an assigned region, pre-select it
           if (user?.regionId) {
             setSelectedRegion(user.regionId);
           } else if (regionData.length > 0) {
@@ -62,7 +60,6 @@ export default function NewReportPage() {
           }
         }
         
-        // Fetch workers
         const { data: workerData, error: workerError } = await supabase
           .from('workers')
           .select('id, full_name, daily_salary')
@@ -78,7 +75,6 @@ export default function NewReportPage() {
           })));
         }
         
-        // Fetch equipment
         const { data: equipmentData, error: equipmentError } = await supabase
           .from('equipment')
           .select('id, type, license_plate')
@@ -127,52 +123,44 @@ export default function NewReportPage() {
     ));
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      setImageUrl(URL.createObjectURL(file));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedRegion) {
-      toast({
-        title: "Region Required",
-        description: "Please select a region for this report.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!user?.id) {
-      toast({
-        title: "Authentication Error",
-        description: "You must be logged in to create a report.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     setIsSubmitting(true);
-    
+
     try {
-      // Calculate totals
-      const totalFuel = selectedEquipment.reduce((sum, item) => sum + item.fuelAmount, 0);
-      const totalWorkerSalary = selectedWorkers.reduce((sum, workerId) => {
-        const worker = availableWorkers.find(w => w.id === workerId);
-        return sum + (worker?.dailySalary || 0);
-      }, 0);
+      let uploadedImageUrl = null;
       
-      // Format date for Supabase
-      const formattedDate = format(date, "yyyy-MM-dd");
-      
-      // 1. Insert the report
+      if (selectedImage) {
+        uploadedImageUrl = await uploadReportImage(selectedImage);
+        if (!uploadedImageUrl) {
+          setIsSubmitting(false);
+          return; // Stop if image upload failed
+        }
+      }
+
       const { data: reportData, error: reportError } = await supabase
         .from('reports')
         .insert({
-          date: formattedDate,
+          date: format(date, "yyyy-MM-dd"),
           region_id: selectedRegion,
           engineer_id: user.id,
           description,
           materials_used: materialsUsed,
           materials_received: materialsReceived,
-          total_fuel: totalFuel,
-          total_worker_salary: totalWorkerSalary
+          total_fuel: selectedEquipment.reduce((sum, item) => sum + item.fuelAmount, 0),
+          total_worker_salary: selectedWorkers.reduce((sum, workerId) => {
+            const worker = availableWorkers.find(w => w.id === workerId);
+            return sum + (worker?.dailySalary || 0);
+          }, 0),
+          image_url: uploadedImageUrl,
         })
         .select('id');
       
@@ -182,7 +170,6 @@ export default function NewReportPage() {
       
       const reportId = reportData[0].id;
       
-      // 2. Insert worker relationships
       if (selectedWorkers.length > 0) {
         const workerRelations = selectedWorkers.map(workerId => ({
           report_id: reportId,
@@ -198,7 +185,6 @@ export default function NewReportPage() {
         }
       }
       
-      // 3. Insert equipment relationships
       if (selectedEquipment.length > 0) {
         const equipmentRelations = selectedEquipment.map(equip => ({
           report_id: reportId,
@@ -233,7 +219,6 @@ export default function NewReportPage() {
     }
   };
 
-  // Calculate totals
   const totalWorkers = selectedWorkers.length;
   const totalEquipment = selectedEquipment.length;
   const totalFuel = selectedEquipment.reduce((sum, item) => sum + item.fuelAmount, 0);
@@ -335,6 +320,26 @@ export default function NewReportPage() {
                   value={materialsReceived}
                   onChange={(e) => setMaterialsReceived(e.target.value)}
                 />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="image">Report Image (Optional)</Label>
+                <Input
+                  id="image"
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  onChange={handleImageChange}
+                  className="cursor-pointer"
+                />
+                {imageUrl && (
+                  <div className="mt-2">
+                    <img
+                      src={imageUrl}
+                      alt="Report preview"
+                      className="max-w-xs rounded-md"
+                    />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
