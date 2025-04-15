@@ -39,7 +39,7 @@ export function EquipmentRegionFilter({ regions, selectedRegion, onRegionChange,
           <SelectValue placeholder="Select Region" />
         </SelectTrigger>
         <SelectContent>
-          {isAdmin && <SelectItem value="all">All Regions</SelectItem>}
+          <SelectItem value="all">All Regions</SelectItem>
           {accessibleRegions.map((region) => (
             <SelectItem key={region.id} value={region.id}>{region.name}</SelectItem>
           ))}

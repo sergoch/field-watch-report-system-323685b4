@@ -340,29 +340,40 @@ export type Database = {
       workers: {
         Row: {
           created_at: string | null
-          daily_salary: number
+          dailysalary: number
           full_name: string
           id: string
           personal_id: string
+          region_id: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
-          daily_salary: number
+          dailysalary: number
           full_name: string
           id?: string
           personal_id: string
+          region_id?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
-          daily_salary?: number
+          dailysalary?: number
           full_name?: string
           id?: string
           personal_id?: string
+          region_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workers_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

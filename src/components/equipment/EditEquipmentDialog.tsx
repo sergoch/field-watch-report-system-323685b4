@@ -121,7 +121,7 @@ export function EditEquipmentDialog({
               <SelectValue placeholder="Select Region" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Unassigned</SelectItem>
+              <SelectItem value="unassigned">Unassigned</SelectItem>
               {regions.map(region => (
                 <SelectItem key={region.id} value={region.id}>
                   {region.name}
