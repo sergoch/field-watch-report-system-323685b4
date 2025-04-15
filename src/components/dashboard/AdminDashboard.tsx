@@ -7,9 +7,9 @@ import { DateRange } from "react-day-picker";
 import { useToast } from "@/hooks/use-toast";
 import { 
   AdminDashboardStats, 
-  fetchAdminDashboardStats, 
   TimeFrame 
 } from "@/utils/dashboard/types";
+import { fetchAdminDashboardStats } from "@/utils/dashboard/adminDashboard";
 import { DashboardFilters } from '@/components/dashboard/filters/DashboardFilters';
 import { StatsCard } from '@/components/dashboard/stats/StatsCard';
 import { RecentReportsTable } from '@/components/dashboard/tables/RecentReportsTable';
