@@ -38,16 +38,8 @@ export function AdminDashboard() {
       
       if (error) throw error;
       
-      setStats({
-        workerCount: 0,
-        equipmentCount: 0,
-        operatorCount: 0,
-        fuelByType: [],
-        incidentsByType: [],
-        recentReports: [],
-        recentIncidents: [],
-        regionsData: stats.regionsData
-      });
+      // We don't need to call setStats directly, as the Supabase realtime subscriptions 
+      // in the useAdminDashboardData hook will trigger a refetch automatically
       
       toast({
         title: "Test Data Cleaned",
