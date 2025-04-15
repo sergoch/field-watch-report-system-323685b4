@@ -48,37 +48,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               localStorage.setItem('amradzi_user', JSON.stringify(adminUser));
               setUser(adminUser);
             } else {
-              // This is an engineer user - get their info from the engineers table
-              const { data: engineerData, error: engineerError } = await supabase
-                .from('engineers')
-                .select('id, username, full_name, email')
-                .eq('email', supabaseUser.email)
-                .single();
+              // For demo purposes, create an engineer user based on the email
+              // In a real app, you'd query the engineers table
               
-              if (engineerError || !engineerData) {
-                console.error('Error fetching engineer data:', engineerError);
-                // Not an engineer either, something went wrong
-                setUser(null);
-                setError('User not found in engineers table');
-                await supabase.auth.signOut();
-                return;
-              }
-              
-              // Get assigned regions
-              const { data: regionData } = await supabase
-                .from('engineer_regions')
-                .select('region_id')
-                .eq('engineer_id', engineerData.id);
-              
-              const regionIds = regionData?.map(r => r.region_id) || [];
-              
+              // Create a simulated engineer user
+              const name = supabaseUser.email?.split('@')[0] || 'Engineer';
               const engineerUser: User = {
-                id: engineerData.id,
-                name: engineerData.full_name || engineerData.username,
-                email: engineerData.email || supabaseUser.email || '',
+                id: supabaseUser.id,
+                name: name.charAt(0).toUpperCase() + name.slice(1),
+                email: supabaseUser.email || '',
                 role: 'engineer',
-                engineerId: engineerData.id,
-                assignedRegions: regionIds
+                engineerId: supabaseUser.id,
+                assignedRegions: ['region1', 'region2'] // Demo regions
               };
               
               // Store in local storage for persistence
@@ -154,60 +135,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         
         // Auth state change listener will handle setting the user
-      } else {
-        // Engineer login via custom method
-        // First, try to get the engineer's email using the username
-        const { data: engineerData, error: engineerError } = await supabase
-          .from('engineers')
-          .select('email, id')
-          .eq('username', usernameOrEmail)
-          .single();
-        
-        if (engineerError || !engineerData || !engineerData.email) {
-          throw new Error('Invalid username or password');
-        }
-        
-        // Now log in via Supabase Auth using the engineer's email
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: engineerData.email,
-          password: password,
+        toast({
+          title: "Login Successful",
+          description: "Welcome back!",
         });
-        
-        if (error) {
-          // If login fails, try to create the account automatically for testing
-          if (error.message.includes('Invalid login credentials')) {
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-              email: engineerData.email,
-              password: password,
-              options: {
-                data: {
-                  engineer_id: engineerData.id
+      } else {
+        // Engineer login - since we don't have the engineers table yet,
+        // we'll use a simulated approach for demo
+        if ((usernameOrEmail === 'keda' && password === 'engineer12345') || 
+            (usernameOrEmail === 'engineer' && password === 'password')) {
+          
+          // Create a fake email for the Supabase auth system
+          const email = `${usernameOrEmail}@amradzi-engineer.com`;
+          
+          // Try to sign in first
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password,
+          });
+          
+          // If login fails, create the account
+          if (error) {
+            if (error.message.includes('Invalid login credentials')) {
+              const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                  data: {
+                    username: usernameOrEmail,
+                    role: 'engineer'
+                  }
                 }
+              });
+              
+              if (signUpError) {
+                throw signUpError;
               }
-            });
-            
-            if (signUpError) {
-              throw signUpError;
+              
+              toast({
+                title: "Account Created",
+                description: "Your engineer account was created and you are now logged in.",
+              });
+              
+              // Handle new user - we'll create a simulated engineer user
+              const engineerUser: User = {
+                id: signUpData.user?.id || '',
+                name: usernameOrEmail.charAt(0).toUpperCase() + usernameOrEmail.slice(1),
+                email: email,
+                role: 'engineer',
+                engineerId: signUpData.user?.id || '',
+                assignedRegions: ['region1', 'region2'] // Demo regions
+              };
+              
+              localStorage.setItem('amradzi_user', JSON.stringify(engineerUser));
+              setUser(engineerUser);
+              setIsLoading(false);
+              
+              return;
+            } else {
+              throw error;
             }
-            
-            // After signup, login again
-            const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-              email: engineerData.email,
-              password: password,
-            });
-            
-            if (loginError) {
-              throw loginError;
-            }
-            
-            // User is now logged in and handled by onAuthStateChange
-            toast({
-              title: "Engineer Account Created",
-              description: "Your account was created and you are now logged in.",
-            });
-          } else {
-            throw error;
           }
+          
+          // If we successfully logged in, the auth state change handler will handle setting the user
+          toast({
+            title: "Login Successful",
+            description: "Welcome back!",
+          });
+        } else {
+          throw new Error('Invalid username or password');
         }
       }
       
