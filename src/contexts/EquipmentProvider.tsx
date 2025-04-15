@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
@@ -13,6 +14,7 @@ export interface EquipmentFormData {
   operatorName: string;
   operatorId: string;
   dailysalary: number;
+  dailySalary: number; // Add this to handle both properties
   fuelType: 'diesel' | 'gasoline';
   region_id?: string;
 }
@@ -138,11 +140,11 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
     try {
       await updateEquipment(editEquipment.id, {
         type: formData.type,
-        license_plate: formData.licensePlate,
-        operator_name: formData.operatorName,
-        operator_id: formData.operatorId,
-        dailysalary: formData.dailySalary,
-        fueltype: formData.fuelType,
+        licensePlate: formData.licensePlate,
+        operatorName: formData.operatorName,
+        operatorId: formData.operatorId,
+        dailysalary: formData.dailysalary || formData.dailySalary,
+        fuelType: formData.fuelType,
         region_id: formData.region_id || null
       });
       
@@ -200,11 +202,11 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
     try {
       await addEquipment({
         type: formData.type,
-        license_plate: formData.licensePlate,
-        operator_name: formData.operatorName,
-        operator_id: formData.operatorId,
-        dailysalary: formData.dailySalary,
-        fueltype: formData.fuelType,
+        licensePlate: formData.licensePlate,
+        operatorName: formData.operatorName,
+        operatorId: formData.operatorId,
+        dailysalary: formData.dailysalary || formData.dailySalary,
+        fuelType: formData.fuelType,
         region_id: formData.region_id || null
       });
       

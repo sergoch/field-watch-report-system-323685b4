@@ -1,128 +1,148 @@
 
-import { cn } from "@/lib/utils";
-import { useAuth } from '@/contexts/AuthContext';
-import { Link, useLocation } from 'react-router-dom';
-import { isAdmin } from '@/utils/auth';
-import {
-  BarChart3,
-  ClipboardList,
-  FileText,
-  Home,
+import { NavLink } from "react-router-dom";
+import { 
+  BarChart3, 
+  FileText, 
+  AlertTriangle, 
+  Briefcase, 
+  Truck, 
+  Users, 
   Settings,
-  Users,
-  AlertTriangle,
-  Truck,
-  Wrench,
   Map
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { isAdmin } from "@/utils/auth";
 
-export function SidebarContent() {
+export function Sidebar() {
   const { user } = useAuth();
-  const location = useLocation();
-  const admin = isAdmin(user);
-
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
-
+  const userIsAdmin = isAdmin(user);
+  
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-3 py-2">
-        <h2 className="mb-2 text-lg font-semibold text-amradzi-blue tracking-tight">
-          Amradzi V2.0
-        </h2>
-        <div className="text-xs text-muted-foreground mb-4">
-          Field Control & Reporting
+    <div className="pb-12 w-full">
+      <div className="space-y-4 py-4">
+        <div className="px-3 py-2">
+          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">Dashboard</h2>
+          <div className="space-y-1">
+            <NavLink
+              to="/"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center rounded-md px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                  isActive ? "bg-accent text-accent-foreground" : "transparent"
+                )
+              }
+            >
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Overview
+            </NavLink>
+          </div>
         </div>
-      </div>
-      <div className="space-y-1 px-3">
-        <SidebarLink href="/dashboard" icon={Home} active={isActive('/dashboard')}>
-          Dashboard
-        </SidebarLink>
-        
-        <SidebarLink href="/reports" icon={FileText} active={isActive('/reports')}>
-          Daily Reports
-        </SidebarLink>
-
-        <SidebarLink href="/incidents" icon={AlertTriangle} active={isActive('/incidents')}>
-          Incidents
-        </SidebarLink>
-        
-        {!admin && (
-          <>
-            <SidebarLink href="/workers" icon={Users} active={isActive('/workers')}>
+        <div className="px-3 py-2">
+          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">Reports & Incidents</h2>
+          <div className="space-y-1">
+            <NavLink
+              to="/reports"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center rounded-md px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                  isActive ? "bg-accent text-accent-foreground" : "transparent"
+                )
+              }
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Daily Reports
+            </NavLink>
+            <NavLink
+              to="/incidents"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center rounded-md px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                  isActive ? "bg-accent text-accent-foreground" : "transparent"
+                )
+              }
+            >
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Incidents
+            </NavLink>
+          </div>
+        </div>
+        <div className="px-3 py-2">
+          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">Resources</h2>
+          <div className="space-y-1">
+            <NavLink
+              to="/workers"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center rounded-md px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                  isActive ? "bg-accent text-accent-foreground" : "transparent"
+                )
+              }
+            >
+              <Briefcase className="mr-2 h-4 w-4" />
               Workers
-            </SidebarLink>
-            
-            <SidebarLink href="/equipment" icon={Truck} active={isActive('/equipment')}>
+            </NavLink>
+            <NavLink
+              to="/equipment"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center rounded-md px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                  isActive ? "bg-accent text-accent-foreground" : "transparent"
+                )
+              }
+            >
+              <Truck className="mr-2 h-4 w-4" />
               Equipment
-            </SidebarLink>
-          </>
-        )}
+            </NavLink>
+          </div>
+        </div>
         
-        {admin && (
-          <>
-            <div className="pt-4">
-              <hr className="border-muted" />
-              <div className="pt-4 pb-2 text-xs font-medium text-muted-foreground">
-                Administration
-              </div>
+        {userIsAdmin && (
+          <div className="px-3 py-2">
+            <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">Administration</h2>
+            <div className="space-y-1">
+              <NavLink
+                to="/users"
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center rounded-md px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                    isActive ? "bg-accent text-accent-foreground" : "transparent"
+                  )
+                }
+              >
+                <Users className="mr-2 h-4 w-4" />
+                Users
+              </NavLink>
+              
+              <NavLink
+                to="/regions"
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center rounded-md px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                    isActive ? "bg-accent text-accent-foreground" : "transparent"
+                  )
+                }
+              >
+                <Map className="mr-2 h-4 w-4" />
+                Regions
+              </NavLink>
+              
+              <NavLink
+                to="/settings"
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center rounded-md px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                    isActive ? "bg-accent text-accent-foreground" : "transparent"
+                  )
+                }
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </NavLink>
             </div>
-            
-            <SidebarLink href="/regions" icon={Map} active={isActive('/regions')}>
-              Regions
-            </SidebarLink>
-            
-            <SidebarLink href="/users" icon={Users} active={isActive('/users')}>
-              Manage Users
-            </SidebarLink>
-            
-            <SidebarLink href="/workers" icon={Wrench} active={isActive('/workers')}>
-              Workers
-            </SidebarLink>
-            
-            <SidebarLink href="/equipment" icon={Truck} active={isActive('/equipment')}>
-              Equipment
-            </SidebarLink>
-            
-            <SidebarLink href="/settings" icon={Settings} active={isActive('/settings')}>
-              Settings
-            </SidebarLink>
-          </>
+          </div>
         )}
       </div>
     </div>
-  );
-}
-
-interface SidebarLinkProps {
-  href: string;
-  icon: React.ElementType;
-  active?: boolean;
-  children: React.ReactNode;
-}
-
-function SidebarLink({ href, icon: Icon, active, children }: SidebarLinkProps) {
-  return (
-    <Link
-      to={href}
-      className={cn(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted transition-colors",
-        active ? "bg-primary text-white hover:bg-primary/90" : "text-muted-foreground"
-      )}
-    >
-      <Icon className="h-4 w-4" />
-      <span>{children}</span>
-    </Link>
-  );
-}
-
-export function Sidebar() {
-  return (
-    <aside className="hidden border-r bg-background md:block w-64">
-      <div className="flex flex-col h-full py-4">
-        <SidebarContent />
-      </div>
-    </aside>
   );
 }

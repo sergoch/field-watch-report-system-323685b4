@@ -1,120 +1,59 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
+import { Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import Layout from "@/components/layout/Layout";
 import { AuthProvider } from "@/contexts/AuthContext";
+import Dashboard from "@/pages/Dashboard";
+import Equipment from "@/pages/Equipment";
+import Workers from "@/pages/Workers";
+import Reports from "@/pages/Reports";
+import ReportDetail from "@/pages/ReportDetail";
+import Incidents from "@/pages/Incidents";
+import NewIncident from "@/pages/NewIncident";
+import IncidentDetail from "@/pages/IncidentDetail";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
+import Profile from "@/pages/Profile";
+import Settings from "@/pages/Settings";
+import NotFound from "@/pages/NotFound";
+import Regions from "@/pages/Regions"; // Added Regions import
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { useEffect } from "react";
-import { initializeApp } from "@/utils/supabase/realtime";
+import { AdminRoute } from "@/components/auth/AdminRoute";
 
-// Pages
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Reports from "./pages/Reports";
-import NewReport from "./pages/NewReport";
-import Incidents from "./pages/Incidents";
-import NewIncident from "./pages/NewIncident";
-import Workers from "./pages/Workers";
-import NewWorker from "./pages/NewWorker";
-import Equipment from "./pages/Equipment";
-import Analytics from "./pages/Analytics";
-import Unauthorized from "./pages/Unauthorized";
-import NotFound from "./pages/NotFound";
-import Users from "./pages/Users";
-import Settings from "./pages/Settings";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60000,
-      refetchOnWindowFocus: true,
-      retry: 1
-    }
-  }
-});
-
-const App = () => {
-  useEffect(() => {
-    initializeApp().then(() => {
-      console.log("App initialized with realtime capabilities");
-    });
-  }, []);
-
+function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/unauthorized" element={<Unauthorized />} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/reports" element={
-                <ProtectedRoute>
-                  <Reports />
-                </ProtectedRoute>
-              } />
-              <Route path="/reports/new" element={
-                <ProtectedRoute>
-                  <NewReport />
-                </ProtectedRoute>
-              } />
-              <Route path="/incidents" element={
-                <ProtectedRoute>
-                  <Incidents />
-                </ProtectedRoute>
-              } />
-              <Route path="/incidents/new" element={
-                <ProtectedRoute>
-                  <NewIncident />
-                </ProtectedRoute>
-              } />
-              <Route path="/users" element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  <Users />
-                </ProtectedRoute>
-              } />
-              <Route path="/workers" element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  <Workers />
-                </ProtectedRoute>
-              } />
-              <Route path="/workers/new" element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  <NewWorker />
-                </ProtectedRoute>
-              } />
-              <Route path="/equipment" element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  <Equipment />
-                </ProtectedRoute>
-              } />
-              <Route path="/analytics" element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  <Analytics />
-                </ProtectedRoute>
-              } />
-              <Route path="/settings" element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  <Settings />
-                </ProtectedRoute>
-              } />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        
+        {/* Protected Routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/equipment" element={<Equipment />} />
+            <Route path="/workers" element={<Workers />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/reports/:id" element={<ReportDetail />} />
+            <Route path="/reports/new" element={<ReportDetail />} />
+            <Route path="/incidents" element={<Incidents />} />
+            <Route path="/incidents/new" element={<NewIncident />} />
+            <Route path="/incidents/:id" element={<IncidentDetail />} />
+            <Route path="/profile" element={<Profile />} />
+            
+            {/* Admin Only Routes */}
+            <Route element={<AdminRoute />}>
+              <Route path="/regions" element={<Regions />} /> {/* Added Regions route */}
+              <Route path="/settings" element={<Settings />} />
+            </Route>
+            
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Route>
+      </Routes>
+      <Toaster />
+    </AuthProvider>
   );
-};
+}
 
 export default App;

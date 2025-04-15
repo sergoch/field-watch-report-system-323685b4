@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { EditDialog } from "@/components/crud/EditDialog";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,8 @@ interface EquipmentFormData {
   licensePlate: string;
   operatorName: string;
   operatorId: string;
-  dailySalary: number; 
+  dailySalary: number;
+  dailysalary: number; // Add this to match EquipmentProvider interface
   fuelType: 'diesel' | 'gasoline';
   region_id: string;
 }
@@ -40,6 +42,7 @@ export function EditEquipmentDialog({
     operatorName: equipment?.operatorName || '',
     operatorId: equipment?.operatorId || '',
     dailySalary: equipment?.dailySalary || 0,
+    dailysalary: equipment?.dailysalary || 0,
     fuelType: equipment?.fuelType || 'diesel',
     region_id: equipment?.region_id || ''
   });
@@ -52,6 +55,7 @@ export function EditEquipmentDialog({
         operatorName: equipment.operatorName,
         operatorId: equipment.operatorId,
         dailySalary: equipment.dailySalary || equipment.dailysalary || 0,
+        dailysalary: equipment.dailySalary || equipment.dailysalary || 0,
         fuelType: equipment.fuelType,
         region_id: equipment.region_id || ''
       });
@@ -62,6 +66,7 @@ export function EditEquipmentDialog({
         operatorName: '',
         operatorId: '',
         dailySalary: 0,
+        dailysalary: 0,
         fuelType: 'diesel',
         region_id: regions.length > 0 ? regions[0].id : ''
       });
@@ -144,7 +149,14 @@ export function EditEquipmentDialog({
             id="dailySalary"
             type="number"
             value={formData.dailySalary}
-            onChange={(e) => setFormData({...formData, dailySalary: Number(e.target.value)})}
+            onChange={(e) => {
+              const value = Number(e.target.value);
+              setFormData({
+                ...formData, 
+                dailySalary: value,
+                dailysalary: value // Update both properties
+              });
+            }}
             className="mt-1"
           />
         </div>
