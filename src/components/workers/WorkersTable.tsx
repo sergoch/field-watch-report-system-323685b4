@@ -46,7 +46,10 @@ export function WorkersTable({
     );
   }
 
-  if (workers.length === 0) {
+  // Ensure workers is an array
+  const validWorkers = Array.isArray(workers) ? workers : [];
+
+  if (validWorkers.length === 0) {
     return (
       <div className="rounded-md border">
         <Table>
@@ -84,7 +87,8 @@ export function WorkersTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {workers.map((worker) => {
+          {validWorkers.map((worker) => {
+            if (!worker || !worker.id) return null;
             const region = regions.find(r => r.id === worker.region_id);
             
             return (

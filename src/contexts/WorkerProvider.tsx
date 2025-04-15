@@ -120,10 +120,16 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
     }
   }, [toast, user, userIsAdmin, selectedRegion]);
 
-  const filteredWorkers = workers.filter(worker => 
-    worker.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    worker.personalId.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredWorkers = workers.filter(worker => {
+    if (!worker || typeof worker.fullName !== 'string' || typeof worker.personalId !== 'string') {
+      return false;
+    }
+    
+    return (
+      worker.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      worker.personalId.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
 
   const handleSaveEdit = async (formData: WorkerFormData) => {
     if (!editWorker) return;
