@@ -30,14 +30,25 @@ export async function uploadReportImage(file: File): Promise<string | null> {
     // First check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      throw new Error("Authentication error: " + (authError?.message || "User not authenticated"));
+      console.error("Auth error during upload:", authError);
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to upload images. Please log in again.",
+        variant: "destructive",
+      });
+      return null;
     }
     
     // Generate a unique filename
     const fileExt = file.name.split('.').pop();
-    const fileName = `${crypto.randomUUID()}.${fileExt}`;
+    const fileName = `${user.id}_${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
     
     console.log("Uploading with authenticated user ID:", user.id);
+    console.log("File upload params:", {
+      bucket: "report_images", 
+      path: `incidents/${fileName}`,
+      contentType: file.type
+    });
     
     // Upload the file to the correct bucket with public access
     const { error: uploadError, data } = await supabase.storage
@@ -49,7 +60,12 @@ export async function uploadReportImage(file: File): Promise<string | null> {
 
     if (uploadError) {
       console.error('Upload error details:', uploadError);
-      throw uploadError;
+      toast({
+        title: "Upload Failed",
+        description: `Error: ${uploadError.message || "Could not upload image"}`,
+        variant: "destructive",
+      });
+      return null;
     }
 
     // Get the public URL
@@ -57,6 +73,7 @@ export async function uploadReportImage(file: File): Promise<string | null> {
       .from('report_images')
       .getPublicUrl(`incidents/${fileName}`);
 
+    console.log("Upload successful, public URL:", publicUrl);
     return publicUrl;
   } catch (error: any) {
     console.error('Error uploading image:', error);

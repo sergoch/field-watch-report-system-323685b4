@@ -34,6 +34,20 @@ export default function NewIncidentPage() {
   const currentDate = format(new Date(), "yyyy-MM-dd");
 
   useEffect(() => {
+    const checkAuth = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data.session) {
+        toast({
+          title: "Authentication Required",
+          description: "You must be logged in to report incidents.",
+          variant: "destructive",
+        });
+        navigate("/login", { replace: true });
+      }
+    };
+    
+    checkAuth();
+    
     const fetchRegions = async () => {
       try {
         const { data, error } = await supabase
@@ -62,7 +76,7 @@ export default function NewIncidentPage() {
     };
 
     fetchRegions();
-  }, [user, toast]);
+  }, [user, toast, navigate]);
 
   const handleDetectLocation = () => {
     setIsLoadingLocation(true);
@@ -155,6 +169,7 @@ export default function NewIncidentPage() {
         variant: "destructive",
       });
       console.error("Auth error:", authError);
+      navigate("/login");
       return;
     }
     

@@ -14,13 +14,84 @@ import {
 import { Incident } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface RecentIncidentsTableProps {
-  incidents: Incident[];
+  incidents?: Incident[];
   isLoading?: boolean;
 }
 
-export function RecentIncidentsTable({ incidents, isLoading = false }: RecentIncidentsTableProps) {
+export function RecentIncidentsTable({ incidents: externalIncidents, isLoading: externalLoading = false }: RecentIncidentsTableProps) {
+  const [engineerIncidents, setEngineerIncidents] = useState<Incident[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Fetch engineer-specific incidents if not provided externally
+  useEffect(() => {
+    if (externalIncidents) {
+      setEngineerIncidents(externalIncidents);
+      return;
+    }
+    
+    const fetchEngineerIncidents = async () => {
+      setIsLoading(true);
+      try {
+        // Get the authenticated user
+        const { data: authData } = await supabase.auth.getUser();
+        if (!authData.user) return;
+        
+        const { data, error } = await supabase
+          .from('incidents')
+          .select(`
+            *,
+            regions (
+              name
+            )
+          `)
+          .eq('engineer_id', authData.user.id)
+          .order('date', { ascending: false })
+          .limit(5);
+        
+        if (error) {
+          console.error('Error fetching engineer incidents:', error);
+          toast({
+            title: "Error loading incidents",
+            description: "Could not load your recent incidents.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Transform data
+        const processedIncidents = data.map(incident => ({
+          ...incident,
+          id: incident.id,
+          date: incident.date,
+          type: incident.type,
+          regionId: incident.region_id,
+          regions: incident.regions,
+          engineerId: incident.engineer_id,
+          location: {
+            latitude: incident.latitude || 0,
+            longitude: incident.longitude || 0
+          }
+        }));
+        
+        setEngineerIncidents(processedIncidents);
+      } catch (err) {
+        console.error('Error in fetchEngineerIncidents:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchEngineerIncidents();
+  }, [externalIncidents, toast, user]);
+
   // Function to determine badge color based on incident type
   const getBadgeVariant = (type: string) => {
     switch (type.toLowerCase()) {
@@ -34,6 +105,9 @@ export function RecentIncidentsTable({ incidents, isLoading = false }: RecentInc
     }
   };
 
+  const isLoadingIncidents = externalLoading || isLoading;
+  const incidents = externalIncidents || engineerIncidents;
+
   return (
     <Card className="h-full">
       <CardHeader>
@@ -41,7 +115,7 @@ export function RecentIncidentsTable({ incidents, isLoading = false }: RecentInc
         <CardDescription>Latest reported incidents</CardDescription>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {isLoadingIncidents ? (
           <div className="space-y-2">
             {Array(3).fill(0).map((_, i) => (
               <div key={i} className="flex justify-between items-center py-2">

@@ -13,13 +13,81 @@ import {
 } from "@/components/ui/table";
 import { Report } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface RecentReportsTableProps {
-  reports: Report[];
+  reports?: Report[];
   isLoading?: boolean;
 }
 
-export function RecentReportsTable({ reports, isLoading = false }: RecentReportsTableProps) {
+export function RecentReportsTable({ reports: externalReports, isLoading: externalLoading = false }: RecentReportsTableProps) {
+  const [engineerReports, setEngineerReports] = useState<Report[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Fetch engineer-specific reports if not provided externally
+  useEffect(() => {
+    if (externalReports) {
+      setEngineerReports(externalReports);
+      return;
+    }
+    
+    const fetchEngineerReports = async () => {
+      setIsLoading(true);
+      try {
+        // Get the authenticated user
+        const { data: authData } = await supabase.auth.getUser();
+        if (!authData.user) return;
+        
+        const { data, error } = await supabase
+          .from('reports')
+          .select(`
+            *,
+            regions (
+              name
+            )
+          `)
+          .eq('engineer_id', authData.user.id)
+          .order('date', { ascending: false })
+          .limit(5);
+        
+        if (error) {
+          console.error('Error fetching engineer reports:', error);
+          toast({
+            title: "Error loading reports",
+            description: "Could not load your recent reports.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Transform data
+        const processedReports = data.map(report => ({
+          ...report,
+          id: report.id,
+          date: report.date,
+          totalFuel: report.total_fuel,
+          regions: report.regions
+        }));
+        
+        setEngineerReports(processedReports);
+      } catch (err) {
+        console.error('Error in fetchEngineerReports:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchEngineerReports();
+  }, [externalReports, toast, user]);
+  
+  const isLoadingReports = externalLoading || isLoading;
+  const reports = externalReports || engineerReports;
+
   return (
     <Card className="h-full">
       <CardHeader>
@@ -27,7 +95,7 @@ export function RecentReportsTable({ reports, isLoading = false }: RecentReports
         <CardDescription>Latest daily reports submitted</CardDescription>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {isLoadingReports ? (
           <div className="space-y-2">
             {Array(3).fill(0).map((_, i) => (
               <div key={i} className="flex justify-between items-center py-2">
