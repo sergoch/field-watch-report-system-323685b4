@@ -8,7 +8,16 @@ import { supabase } from "@/integrations/supabase/client";
  * @returns True if the user is an admin, false otherwise
  */
 export function isAdmin(user?: User | null): boolean {
-  return user?.role === "admin";
+  if (!user) return false;
+  
+  // Check if user has admin role
+  if (user.role === "admin") {
+    // Check if user email is in the allowed list or is our special admin
+    return user.email === 'admin@amradzi.ge' || 
+           ['rasanidze@gmail.com', 'tbedinadze@gmail.com', 'sergoch@gmail.com'].includes(user.email);
+  }
+  
+  return false;
 }
 
 /**

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
@@ -128,8 +128,8 @@ export function LoginForm() {
           <div className="grid grid-cols-2 gap-4 text-xs">
             <div className="border rounded p-2">
               <p className="font-bold">Admin</p>
-              <p>Email: rasanidze@gmail.com</p>
-              <p>Password: admin12345</p>
+              <p>Email: admin@amradzi.ge</p>
+              <p>Password: amradzi</p>
             </div>
             <div className="border rounded p-2">
               <p className="font-bold">Engineer</p>

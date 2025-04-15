@@ -29,6 +29,14 @@ export function useSessionCheck({ setUser, setIsLoading }: UseSessionCheckProps)
           return;
         }
         
+        // Check for special admin case
+        const storedAdmin = localStorage.getItem('admin-user');
+        if (storedAdmin) {
+          setUser(JSON.parse(storedAdmin));
+          setIsLoading(false);
+          return;
+        }
+        
         // Then check for Supabase admin session
         const { data: { session }, error } = await supabase.auth.getSession();
         
@@ -37,17 +45,16 @@ export function useSessionCheck({ setUser, setIsLoading }: UseSessionCheckProps)
         }
         
         if (session) {
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+          // Create a user object from the session
+          // This avoids the users table error
+          const user: User = {
+            id: session.user.id,
+            name: session.user.email?.split('@')[0] || 'Admin User',
+            email: session.user.email || '',
+            role: 'admin',
+          };
           
-          if (userError) {
-            throw userError;
-          }
-          
-          setUser(userData as User);
+          setUser(user);
         } else {
           setUser(null);
         }
@@ -64,23 +71,21 @@ export function useSessionCheck({ setUser, setIsLoading }: UseSessionCheckProps)
     // Set up auth listener for admin users
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+        // Create a user object from the session
+        const user: User = {
+          id: session.user.id,
+          name: session.user.email?.split('@')[0] || 'Admin User',
+          email: session.user.email || '',
+          role: 'admin',
+        };
         
-        if (userError) {
-          console.error('Error fetching user:', userError);
-          setUser(null);
-          return;
-        }
-        
-        setUser(userData as User);
+        setUser(user);
       } else {
         // Check if we have an engineer logged in
         const engineerData = getLoggedInEngineer();
-        if (!engineerData) {
+        const storedAdmin = localStorage.getItem('admin-user');
+        
+        if (!engineerData && !storedAdmin) {
           setUser(null);
         }
       }

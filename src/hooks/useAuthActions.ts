@@ -19,6 +19,26 @@ export function useAuthActions({ setUser, setError }: UseAuthActionsProps) {
       setError(null);
       
       if (isAdmin) {
+        // For admin login
+        if (identifier === 'admin@amradzi.ge' && password === 'amradzi') {
+          // Special case for the specified admin
+          setUser({
+            id: 'admin-id',
+            name: 'Admin User',
+            email: 'admin@amradzi.ge',
+            role: 'admin',
+          });
+          
+          toast({
+            title: "Admin login successful",
+            description: "Welcome back!",
+          });
+          
+          navigate('/dashboard');
+          return;
+        }
+        
+        // Normal Supabase auth login for other admins
         const { data, error } = await supabase.auth.signInWithPassword({
           email: identifier,
           password,
@@ -31,6 +51,7 @@ export function useAuthActions({ setUser, setError }: UseAuthActionsProps) {
           description: "Welcome back!",
         });
       } else {
+        // Engineer login via RPC
         try {
           const engineerData = await loginEngineer(identifier, password);
           
@@ -45,6 +66,8 @@ export function useAuthActions({ setUser, setError }: UseAuthActionsProps) {
             title: "Engineer login successful",
             description: `Welcome back, ${engineerData.full_name}!`,
           });
+          
+          navigate('/dashboard');
         } catch (error) {
           throw new Error('Invalid username or password');
         }
