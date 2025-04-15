@@ -33,14 +33,14 @@ export async function uploadReportImage(file: File): Promise<string | null> {
     
     // Upload the file
     const { error: uploadError, data } = await supabase.storage
-      .from('report_images')
+      .from('Report Images')
       .upload(fileName, file);
 
     if (uploadError) throw uploadError;
 
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('report_images')
+      .from('Report Images')
       .getPublicUrl(fileName);
 
     return publicUrl;
