@@ -140,74 +140,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: "Welcome back!",
         });
       } else {
-        // Engineer login - since we don't have the engineers table yet,
-        // we'll use a simulated approach for demo
-        if ((usernameOrEmail === 'keda' && password === 'engineer12345') || 
-            (usernameOrEmail === 'engineer' && password === 'password')) {
-          
-          // Create a fake email for the Supabase auth system
-          const email = `${usernameOrEmail}@amradzi-engineer.com`;
-          
-          // Try to sign in first
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: email,
-            password: password,
-          });
-          
-          // If login fails, create the account
-          if (error) {
-            if (error.message.includes('Invalid login credentials')) {
-              const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                email: email,
-                password: password,
-                options: {
-                  data: {
-                    username: usernameOrEmail,
-                    role: 'engineer'
-                  }
-                }
-              });
-              
-              if (signUpError) {
-                throw signUpError;
-              }
-              
-              toast({
-                title: "Account Created",
-                description: "Your engineer account was created and you are now logged in.",
-              });
-              
-              // Handle new user - we'll create a simulated engineer user
-              const engineerUser: User = {
-                id: signUpData.user?.id || '',
-                name: usernameOrEmail.charAt(0).toUpperCase() + usernameOrEmail.slice(1),
-                email: email,
-                role: 'engineer',
-                engineerId: signUpData.user?.id || '',
-                assignedRegions: ['region1', 'region2'] // Demo regions
-              };
-              
-              localStorage.setItem('amradzi_user', JSON.stringify(engineerUser));
-              setUser(engineerUser);
-              setIsLoading(false);
-              
-              return;
-            } else {
-              throw error;
-            }
-          }
-          
-          // If we successfully logged in, the auth state change handler will handle setting the user
-          toast({
-            title: "Login Successful",
-            description: "Welcome back!",
-          });
-        } else {
+        // Engineer login via RPC function
+        const { data, error } = await supabase.rpc('authenticate_engineer', {
+          p_username: usernameOrEmail,
+          p_password: password
+        });
+        
+        if (error || !data?.[0]) {
           throw new Error('Invalid username or password');
         }
+        
+        const engineer = data[0];
+        
+        // Create a simulated engineer session
+        const engineerUser: User = {
+          id: engineer.id,
+          name: engineer.full_name || engineer.username,
+          email: engineer.email || `${engineer.username}@amradzi-engineer.com`,
+          role: 'engineer',
+          engineerId: engineer.id,
+          assignedRegions: ['region1', 'region2'] // We'll fetch these later
+        };
+        
+        // Store in local storage for persistence
+        localStorage.setItem('amradzi_user', JSON.stringify(engineerUser));
+        setUser(engineerUser);
+        
+        toast({
+          title: "Login Successful",
+          description: "Welcome back!",
+        });
       }
-      
-      // Authentication is now handled by onAuthStateChange listener
     } catch (error: any) {
       console.error('Login error:', error);
       setError('Login failed. Please check your credentials and try again.');

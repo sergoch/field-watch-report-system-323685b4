@@ -9,6 +9,78 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      engineer_regions: {
+        Row: {
+          assigned_at: string | null
+          engineer_id: string | null
+          id: string
+          region_id: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          engineer_id?: string | null
+          id?: string
+          region_id?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          engineer_id?: string | null
+          id?: string
+          region_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engineer_regions_engineer_id_fkey"
+            columns: ["engineer_id"]
+            isOneToOne: false
+            referencedRelation: "engineers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engineer_regions_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      engineers: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          password_hash: string
+          phone: string | null
+          updated_at: string | null
+          username: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          password_hash: string
+          phone?: string | null
+          updated_at?: string | null
+          username: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          password_hash?: string
+          phone?: string | null
+          updated_at?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
       equipment: {
         Row: {
           created_at: string | null
@@ -297,9 +369,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      authenticate_engineer: {
+        Args: { p_username: string; p_password: string }
+        Returns: {
+          id: string
+          username: string
+          full_name: string
+          email: string
+        }[]
+      }
       clean_test_data: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      get_engineer_id_from_auth: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
       }
     }
     Enums: {
