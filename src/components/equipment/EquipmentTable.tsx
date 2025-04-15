@@ -99,7 +99,7 @@ export function EquipmentTable({
             // Normalize equipment data to handle different property names
             const licensePlate = equip.licensePlate || equip.license_plate || '';
             const dailySalary = equip.dailySalary || equip.dailysalary || 0;
-            const fuelType = equip.fuelType || equip.fueltype || '';
+            const fuelType = equip.fuelType || 'diesel'; // Default to 'diesel' if undefined
             
             const region = regions.find(r => r.id === equip.region_id);
             
