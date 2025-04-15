@@ -1,8 +1,11 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { FilterParams, EngineerDashboardStats } from "./types";
 import { formatDateForQuery, getDateRangeFromTimeFrame } from "./dateUtils";
 import { Worker, Equipment, Report, Incident } from "@/types";
+import { v4 as uuidv4 } from "uuid";
+import { randomSalary, randomPosition } from "@/utils/random";
+import { mockRegions } from "@/utils/mockData";
+import { subDays } from "date-fns";
 
 export const fetchEngineerDashboardStats = async (
   userId: string,
@@ -196,4 +199,17 @@ export const fetchEngineerDashboardStats = async (
       recentIncidents: []
     };
   }
+};
+
+export const createMockWorkerData = (count: number): Worker[] => {
+  return Array.from({ length: count }, (_, i) => ({
+    id: uuidv4(),
+    full_name: `Worker ${i + 1}`,
+    personal_id: `PID${100000 + i}`,
+    dailysalary: randomSalary(),
+    region_id: mockRegions[Math.floor(Math.random() * mockRegions.length)].id,
+    status: Math.random() > 0.2 ? 'active' : 'inactive',
+    position: randomPosition(),
+    created_at: subDays(new Date(), Math.floor(Math.random() * 365)).toISOString()
+  }));
 };
