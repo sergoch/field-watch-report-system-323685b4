@@ -33,19 +33,19 @@ export function EditWorkerDialog({
   isCreating = false
 }: EditWorkerDialogProps) {
   const [formData, setFormData] = useState<WorkerFormData>({
-    fullName: worker?.fullName || '',
-    personalId: worker?.personalId || '',
-    dailysalary: worker?.dailysalary || 0,
-    region_id: worker?.region_id || ''
+    fullName: '',
+    personalId: '',
+    dailysalary: 0,
+    region_id: ''
   });
 
   // Update form data when worker changes
   useEffect(() => {
     if (worker) {
       setFormData({
-        fullName: worker.fullName,
-        personalId: worker.personalId,
-        dailysalary: worker.dailysalary,
+        fullName: worker.fullName || worker.full_name || '',
+        personalId: worker.personalId || worker.personal_id || '',
+        dailysalary: worker.dailysalary || worker.dailySalary || 0,
         region_id: worker.region_id || ''
       });
     } else if (isCreating) {

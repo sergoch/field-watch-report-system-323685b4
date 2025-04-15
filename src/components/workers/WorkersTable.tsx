@@ -89,14 +89,20 @@ export function WorkersTable({
         <TableBody>
           {validWorkers.map((worker) => {
             if (!worker || !worker.id) return null;
+            
+            // Normalize worker data to handle different property names
+            const fullName = worker.fullName || worker.full_name || '';
+            const personalId = worker.personalId || worker.personal_id || '';
+            const dailySalary = worker.dailySalary || worker.dailysalary || 0;
+            
             const region = regions.find(r => r.id === worker.region_id);
             
             return (
               <TableRow key={worker.id}>
-                <TableCell className="font-medium">{worker.fullName}</TableCell>
-                <TableCell>{worker.personalId}</TableCell>
+                <TableCell className="font-medium">{fullName}</TableCell>
+                <TableCell>{personalId}</TableCell>
                 <TableCell>{region?.name || "Unassigned"}</TableCell>
-                <TableCell>{worker.dailysalary}</TableCell>
+                <TableCell>{dailySalary}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button 

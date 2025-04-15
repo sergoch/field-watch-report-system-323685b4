@@ -1,3 +1,4 @@
+
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
@@ -17,13 +18,27 @@ export function useWorkersProvider() {
   const { toast } = useToast();
 
   const { 
-    data: workers, 
+    data: workersData, 
     loading, 
     add: addWorker,
     update: updateWorker,
     remove: removeWorker 
   } = useSupabaseRealtime<Worker>({ 
     tableName: 'workers' 
+  });
+
+  // Normalize worker data to handle field name inconsistencies
+  const workers = workersData.map(worker => {
+    return {
+      ...worker,
+      // Ensure both naming formats are available
+      fullName: worker.fullName || worker.full_name || '',
+      full_name: worker.full_name || worker.fullName || '',
+      personalId: worker.personalId || worker.personal_id || '',
+      personal_id: worker.personal_id || worker.personalId || '',
+      dailySalary: worker.dailySalary || worker.dailysalary || 0,
+      dailysalary: worker.dailysalary || worker.dailySalary || 0
+    };
   });
 
   useEffect(() => {
@@ -43,15 +58,18 @@ export function useWorkersProvider() {
     fetchRegions();
   }, []);
 
-  const filteredWorkers = workers.filter(worker => 
-    (worker.fullName || worker.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (worker.personalId || worker.personal_id || '').includes(searchQuery)
-  );
+  const filteredWorkers = workers.filter(worker => {
+    const fullName = worker.fullName || worker.full_name || '';
+    const personalId = worker.personalId || worker.personal_id || '';
+    
+    return fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           personalId.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   const handleSaveEdit = async (formData: {
     fullName: string;
     personalId: string;
-    dailySalary: number;
+    dailysalary: number;
     region_id: string;
   }) => {
     if (!editWorker) return;
@@ -63,7 +81,7 @@ export function useWorkersProvider() {
       await updateWorker(editWorker.id, {
         full_name: formData.fullName,
         personal_id: formData.personalId,
-        dailysalary: formData.dailySalary,
+        dailysalary: formData.dailysalary,
         region_id: formData.region_id || null
       });
       
@@ -93,7 +111,7 @@ export function useWorkersProvider() {
       
       toast({
         title: "Worker Deleted",
-        description: `${deleteWorker.fullName} has been removed from the registry.`
+        description: `${deleteWorker.fullName || deleteWorker.full_name} has been removed from the registry.`
       });
       
       setDeleteWorker(null);
@@ -111,7 +129,7 @@ export function useWorkersProvider() {
   const handleCreateNew = async (formData: {
     fullName: string;
     personalId: string;
-    dailySalary: number;
+    dailysalary: number;
     region_id: string;
   }) => {
     if (!validateForm(formData)) return;
@@ -121,7 +139,7 @@ export function useWorkersProvider() {
       await addWorker({
         full_name: formData.fullName,
         personal_id: formData.personalId,
-        dailysalary: formData.dailySalary,
+        dailysalary: formData.dailysalary,
         region_id: formData.region_id || null
       });
       
@@ -145,7 +163,7 @@ export function useWorkersProvider() {
   const validateForm = (formData: {
     fullName: string;
     personalId: string;
-    dailySalary: number;
+    dailysalary: number;
     region_id: string;
   }) => {
     if (!formData.fullName.trim()) {
@@ -164,7 +182,7 @@ export function useWorkersProvider() {
       });
       return false;
     }
-    if (formData.dailySalary <= 0) {
+    if (formData.dailysalary <= 0) {
       toast({
         title: "Validation Error",
         description: "Daily salary must be greater than zero",
@@ -181,9 +199,9 @@ export function useWorkersProvider() {
         const region = regions.find(r => r.id === worker.region_id);
         
         return {
-          "Full Name": worker.fullName,
-          "Personal ID": worker.personalId,
-          "Daily Salary (GEL)": worker.dailySalary,
+          "Full Name": worker.fullName || worker.full_name,
+          "Personal ID": worker.personalId || worker.personal_id,
+          "Daily Salary (GEL)": worker.dailySalary || worker.dailysalary,
           "Region": region?.name || "Unassigned"
         };
       });
