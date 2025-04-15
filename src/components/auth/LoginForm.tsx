@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from "@/components/ui/button";
@@ -135,19 +136,19 @@ export function LoginForm() {
           </TabsContent>
         </Tabs>
       </CardContent>
-      <CardFooter className="text-center text-sm">
+      <CardFooter className="flex justify-center text-sm">
         <div className="text-muted-foreground w-full space-y-2">
-          <p>Default credentials:</p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
+          <p className="text-center font-semibold">Working Credentials:</p>
+          <div className="grid grid-cols-2 gap-4 text-xs">
             <div className="border rounded p-2">
-              <p className="font-bold">Admin</p>
-              <p>Email: rasanidze@gmail.com</p>
-              <p>Password: admin12345</p>
+              <p className="font-bold text-center">Admin</p>
+              <p><span className="font-medium">Email:</span> rasanidze@gmail.com</p>
+              <p><span className="font-medium">Password:</span> admin12345</p>
             </div>
             <div className="border rounded p-2">
-              <p className="font-bold">Engineer</p>
-              <p>Username: keda</p>
-              <p>Password: engineer12345</p>
+              <p className="font-bold text-center">Engineer</p>
+              <p><span className="font-medium">Username:</span> keda</p>
+              <p><span className="font-medium">Password:</span> engineer12345</p>
             </div>
           </div>
         </div>
