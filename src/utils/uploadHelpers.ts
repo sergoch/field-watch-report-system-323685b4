@@ -27,9 +27,17 @@ export async function uploadReportImage(file: File): Promise<string | null> {
   }
 
   try {
+    // First check if user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      throw new Error("Authentication error: " + (authError?.message || "User not authenticated"));
+    }
+    
     // Generate a unique filename
     const fileExt = file.name.split('.').pop();
     const fileName = `${crypto.randomUUID()}.${fileExt}`;
+    
+    console.log("Uploading with authenticated user ID:", user.id);
     
     // Upload the file to the correct bucket with public access
     const { error: uploadError, data } = await supabase.storage
@@ -39,7 +47,10 @@ export async function uploadReportImage(file: File): Promise<string | null> {
         contentType: file.type // Set the content type explicitly
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('Upload error details:', uploadError);
+      throw uploadError;
+    }
 
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage

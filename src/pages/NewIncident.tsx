@@ -146,14 +146,20 @@ export default function NewIncidentPage() {
       return;
     }
     
-    if (!user?.id) {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !authData.user) {
       toast({
         title: "Authentication Error",
-        description: "You must be logged in to report an incident.",
+        description: "You must be logged in to report an incident. Please log in again.",
         variant: "destructive",
       });
+      console.error("Auth error:", authError);
       return;
     }
+    
+    const engineerId = authData.user.id;
+    console.log("Authenticated engineer ID:", engineerId);
     
     setIsSubmitting(true);
     
@@ -164,21 +170,26 @@ export default function NewIncidentPage() {
         return;
       }
       
+      const incidentPayload = {
+        type,
+        description,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        region_id: selectedRegion,
+        engineer_id: engineerId,
+        date: new Date().toISOString(),
+        image_url: imageUrl
+      };
+      
+      console.log("Incident payload:", incidentPayload);
+      
       const { data, error } = await supabase
         .from('incidents')
-        .insert({
-          type,
-          description,
-          latitude: location.latitude,
-          longitude: location.longitude,
-          region_id: selectedRegion,
-          engineer_id: user.id,
-          date: new Date().toISOString(),
-          image_url: imageUrl
-        })
+        .insert(incidentPayload)
         .select();
       
       if (error) {
+        console.error("Insert error details:", error);
         throw error;
       }
       
