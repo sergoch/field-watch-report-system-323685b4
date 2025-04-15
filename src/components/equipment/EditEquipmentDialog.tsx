@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { EditDialog } from "@/components/crud/EditDialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,7 +46,7 @@ export function EditEquipmentDialog({
   });
 
   // Update form data when equipment changes
-  useState(() => {
+  useEffect(() => {
     if (equipment) {
       setFormData({
         type: equipment.type,
@@ -57,8 +57,19 @@ export function EditEquipmentDialog({
         fuelType: equipment.fuelType,
         region_id: equipment.region_id || ''
       });
+    } else if (isCreating) {
+      // Reset form when creating a new equipment
+      setFormData({
+        type: '',
+        licensePlate: '',
+        operatorName: '',
+        operatorId: '',
+        dailySalary: 0,
+        fuelType: 'diesel',
+        region_id: regions.length > 0 ? regions[0].id : ''
+      });
     }
-  });
+  }, [equipment, isCreating, regions]);
 
   const handleSubmit = async () => {
     await onSave(formData);

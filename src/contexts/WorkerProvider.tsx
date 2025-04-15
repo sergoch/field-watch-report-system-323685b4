@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
@@ -63,7 +64,7 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
     if (user?.assignedRegions && user.assignedRegions.length > 0) {
       filter = { region_id: user.assignedRegions };
     }
-  } else if (selectedRegion) {
+  } else if (selectedRegion && selectedRegion !== "all") {
     filter = { region_id: selectedRegion };
   }
   
@@ -120,7 +121,9 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
     }
   }, [toast, user, userIsAdmin, selectedRegion]);
 
+  // Filter workers and handle null/undefined values safely
   const filteredWorkers = workers.filter(worker => {
+    // Check if worker exists and has required properties
     if (!worker || typeof worker.fullName !== 'string' || typeof worker.personalId !== 'string') {
       return false;
     }
@@ -214,12 +217,13 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
         }
       }
       
+      // Fix the field name mismatch - use dailysalary instead of dailySalary
       await addWorker({
-        fullName: formData.fullName,
-        personalId: formData.personalId,
-        dailySalary: formData.dailySalary,
+        full_name: formData.fullName,
+        personal_id: formData.personalId,
+        dailysalary: formData.dailySalary,
         region_id: regionId || null
-      });
+      } as any);
       
       toast({
         title: "Worker Added",

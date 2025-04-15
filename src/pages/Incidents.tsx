@@ -16,13 +16,14 @@ import { IncidentDetails } from "@/components/incidents/IncidentDetails";
 import * as XLSX from 'xlsx';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { isAdmin } from "@/utils/auth";
 
 export default function IncidentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<IncidentType | "All">("All");
   const { toast } = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const userIsAdmin = isAdmin(user);
   
   const [viewIncident, setViewIncident] = useState<Incident | null>(null);
   const [editIncident, setEditIncident] = useState<Incident | null>(null);
@@ -30,22 +31,14 @@ export default function IncidentsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [regionNames, setRegionNames] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   
-  const { 
-    data: incidents, 
-    loading,
-    remove: removeIncident,
-    refetch,
-    setData: setIncidents 
-  } = useSupabaseRealtime<Incident>({
-    tableName: 'incidents',
-    initialFetch: false,
-  });
-
   useEffect(() => {
     const fetchIncidents = async () => {
       if (!user) return;
-
+      
+      setIsLoading(true);
       try {
         let query = supabase.from('incidents').select(`
           *,
@@ -54,8 +47,8 @@ export default function IncidentsPage() {
           )
         `);
         
-        // Make sure we're using a proper UUID as a string, not a number
-        if (!isAdmin && user.id) {
+        // Only filter by engineer_id if user is not admin
+        if (!userIsAdmin && user.id) {
           const engineerId = typeof user.id === 'string' ? user.id : String(user.id);
           query = query.eq('engineer_id', engineerId);
         }
@@ -70,7 +63,7 @@ export default function IncidentsPage() {
             variant: "destructive"
           });
         } else if (data) {
-          setIncidents(data.map(incident => ({
+          const processedData = data.map(incident => ({
             ...incident,
             // Transform from snake_case to camelCase for consistency
             id: incident.id,
@@ -85,22 +78,51 @@ export default function IncidentsPage() {
               longitude: incident.longitude || 0
             },
             regions: incident.regions
-          })));
+          }));
+          setIncidents(processedData);
         }
       } catch (err) {
         console.error('Exception when fetching incidents:', err);
+      } finally {
+        setIsLoading(false);
       }
     };
     
     if (user) {
       fetchIncidents();
     }
-  }, [user, isAdmin, setIncidents, toast]);
+    
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('incidents_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'incidents'
+      }, () => {
+        if (user) {
+          fetchIncidents();
+        }
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, userIsAdmin, toast]);
 
   useEffect(() => {
     const fetchRegions = async () => {
-      const { data } = await supabase.from('regions').select('id, name');
-      if (data) {
+      const { data, error } = await supabase.from('regions').select('id, name');
+      
+      if (error) {
+        console.error('Error fetching regions:', error);
+        toast({
+          title: "Error fetching regions",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else if (data) {
         const regions: Record<string, string> = {};
         data.forEach(region => {
           regions[region.id] = region.name;
@@ -110,7 +132,7 @@ export default function IncidentsPage() {
     };
     
     fetchRegions();
-  }, []);
+  }, [toast]);
 
   const incidentTypes: IncidentType[] = [
     "Cut", "Parallel", "Damage", "Node", "Hydrant", "Chamber", "Other"
@@ -137,18 +159,24 @@ export default function IncidentsPage() {
     
     setIsDeleting(true);
     try {
-      await removeIncident(deleteIncident.id);
+      const { error } = await supabase
+        .from('incidents')
+        .delete()
+        .eq('id', deleteIncident.id);
+        
+      if (error) throw error;
       
       toast({
         title: "Incident Deleted",
         description: `${deleteIncident.type} incident has been deleted successfully.`
       });
       
+      setIncidents(prev => prev.filter(incident => incident.id !== deleteIncident.id));
       setDeleteIncident(null);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to delete the incident.",
+        description: "Failed to delete the incident: " + error.message,
         variant: "destructive"
       });
     } finally {
@@ -219,7 +247,7 @@ export default function IncidentsPage() {
           
           <IncidentsTable
             incidents={filteredIncidents}
-            loading={loading}
+            loading={isLoading}
             regionNames={regionNames}
             onView={setViewIncident}
             onEdit={setEditIncident}
