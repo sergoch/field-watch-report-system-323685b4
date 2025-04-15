@@ -122,29 +122,69 @@ export default function NewIncidentPage() {
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
+      if (!file) {
+        toast({
+          title: "Image Required",
+          description: "Please select an image to upload.",
+          variant: "destructive"
+        });
+        return null;
+      }
+
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Invalid File Type",
+          description: "Please upload a JPEG or PNG image.",
+          variant: "destructive"
+        });
+        return null;
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        toast({
+          title: "File Too Large",
+          description: "Image must be smaller than 5MB.",
+          variant: "destructive"
+        });
+        return null;
+      }
+
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
       const filePath = `incidents/${fileName}`;
       
-      // Upload file to Supabase Storage
       const { error: uploadError } = await supabase
         .storage
-        .from('incidents')
+        .from('report_images')
         .upload(filePath, file);
         
       if (uploadError) {
-        throw uploadError;
+        console.error('Upload error:', uploadError);
+        toast({
+          title: "Upload Failed",
+          description: uploadError.message || "Could not upload image.",
+          variant: "destructive"
+        });
+        return null;
       }
       
-      // Get the public URL
       const { data } = supabase
         .storage
-        .from('incidents')
+        .from('report_images')
         .getPublicUrl(filePath);
         
       return data.publicUrl;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading image:", error);
+      toast({
+        title: "Submission Error",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive"
+      });
       return null;
     }
   };
@@ -195,7 +235,8 @@ export default function NewIncidentPage() {
       // Upload image and get public URL
       const imageUrl = await uploadImage(imageFile);
       if (!imageUrl) {
-        throw new Error("Failed to upload image");
+        setIsSubmitting(false);
+        return; // uploadImage will have shown a toast
       }
       
       // Save incident to Supabase
@@ -207,7 +248,7 @@ export default function NewIncidentPage() {
           latitude: location.latitude,
           longitude: location.longitude,
           region_id: selectedRegion,
-          engineer_id: user.id,
+          engineer_id: user?.id,
           date: new Date().toISOString(),
           image_url: imageUrl
         })
