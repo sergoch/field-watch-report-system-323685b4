@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -48,12 +47,10 @@ export default function ReportsPage() {
         )
       `);
       
-      // If not admin, only show the user's reports
       if (!isAdmin && user?.id) {
         query = query.eq('engineer_id', user.id);
       }
       
-      // Apply date filtering if available
       if (dateRange?.from && dateRange?.to) {
         const fromDate = formatDateForQuery(dateRange.from);
         const toDate = formatDateForQuery(dateRange.to);
@@ -92,8 +89,8 @@ export default function ReportsPage() {
   const filteredReports = allReports.filter(report => {
     const matchesSearch = (
       (report.region?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (report.materials_used || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (report.materials_received || '').toLowerCase().includes(searchQuery.toLowerCase())
+      (report.materials_used || report.materialsUsed || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (report.materials_received || report.materialsReceived || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
     
     if (!dateRange?.from || !dateRange?.to) return matchesSearch;
@@ -136,9 +133,9 @@ export default function ReportsPage() {
           "Region": report.region?.name || "Unknown",
           "Workers Count": report.workers?.length || 0,
           "Equipment Count": report.equipment?.length || 0,
-          "Total Fuel (L)": report.totalFuel || 0,
-          "Materials Used": report.materials_used || "",
-          "Materials Received": report.materials_received || "",
+          "Total Fuel (L)": report.totalFuel || report.total_fuel || 0,
+          "Materials Used": report.materials_used || report.materialsUsed || "",
+          "Materials Received": report.materials_received || report.materialsReceived || "",
           "Description": report.description || ""
         };
       });

@@ -28,7 +28,7 @@ export function IncidentDetails({ incident, regionNames, onEdit }: IncidentDetai
         </div>
         <div>
           <Label className="font-semibold">Region</Label>
-          <p>{regionNames[incident.regionId || ""] || "Unknown"}</p>
+          <p>{regionNames[incident.region_id || ""] || "Unknown"}</p>
         </div>
         <div>
           <Label className="font-semibold">Location</Label>
@@ -44,12 +44,12 @@ export function IncidentDetails({ incident, regionNames, onEdit }: IncidentDetai
         <p className="mt-1 whitespace-pre-wrap">{incident.description}</p>
       </div>
 
-      {incident.imageUrl && (
+      {incident.image_url && (
         <div>
           <Label className="font-semibold">Incident Photo</Label>
           <div className="mt-2 border rounded-md overflow-hidden">
             <img 
-              src={incident.imageUrl} 
+              src={incident.image_url} 
               alt="Incident" 
               className="w-full h-auto max-h-60 object-contain"
             />

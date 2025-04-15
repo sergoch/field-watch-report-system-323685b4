@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { uploadReportImage } from "@/utils/uploadHelpers";
 
 export default function NewIncidentPage() {
-  const [type, setType] = useState<IncidentType>("Damage");
+  const [type, setType] = useState<IncidentType>("damage");
   const [location, setLocation] = useState<{ latitude: number | null, longitude: number | null }>({ latitude: null, longitude: null });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -73,9 +72,7 @@ export default function NewIncidentPage() {
           setRegions(data);
           
           // Set default region
-          if (user?.regionId) {
-            setSelectedRegion(user.regionId);
-          } else if (user?.assignedRegions?.length) {
+          if (user?.assignedRegions?.length) {
             setSelectedRegion(user.assignedRegions[0]);
           } else if (data.length > 0) {
             setSelectedRegion(data[0].id);

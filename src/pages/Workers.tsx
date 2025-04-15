@@ -7,10 +7,7 @@ import { EditWorkerDialog } from '@/components/workers/EditWorkerDialog';
 import { DeleteWorkerDialog } from '@/components/workers/DeleteWorkerDialog';
 import { ViewWorkerDialog } from '@/components/workers/ViewWorkerDialog';
 import { WorkersTable } from '@/components/workers/WorkersTable';
-import { WorkersHeader } from '@/components/workers/WorkersHeader';
-import { WorkersProvider, useWorkersContext } from '@/contexts/WorkerProvider';
-import { WorkersSearch } from '@/components/workers/WorkersSearch';
-import { WorkersRegionFilter } from '@/components/workers/WorkersRegionFilter';
+import { useWorkersProvider } from '@/components/workers/WorkersProvider';
 import { Worker } from '@/types';
 
 interface WorkerFormData {
@@ -31,31 +28,15 @@ function WorkersContent() {
   const { 
     workers, 
     loading, 
-    error, 
-    createWorker, 
-    updateWorker, 
-    deleteWorker,
-    filter,
-    setFilter,
-    regions
-  } = useWorkersContext();
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-700">Error Loading Data</h2>
-          <p className="text-gray-500 mt-2">{error.message || "An unexpected error occurred"}</p>
-          <Button 
-            onClick={() => window.location.reload()} 
-            className="mt-4"
-          >
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
-  }
+    regions,
+    searchQuery,
+    setSearchQuery,
+    handleCreateNew,
+    handleSaveEdit,
+    handleDelete,
+    isDeleting,
+    isSaving
+  } = useWorkersProvider();
 
   const handleViewWorker = (worker: Worker) => {
     setSelectedWorker(worker);
@@ -79,12 +60,12 @@ function WorkersContent() {
 
   const handleCreateSubmit = async (formData: WorkerFormData) => {
     try {
-      // Ensure the form data matches the required format
-      const workerData: WorkerFormData = {
-        ...formData,
-        dailysalary: formData.dailysalary || 0  // Ensure the property name matches
-      };
-      await createWorker(workerData);
+      await handleCreateNew({
+        fullName: formData.fullName,
+        personalId: formData.personalId,
+        dailySalary: formData.dailysalary,
+        region_id: formData.region_id
+      });
       setIsCreateDialogOpen(false);
       toast({
         title: "Worker Created",
@@ -101,13 +82,13 @@ function WorkersContent() {
 
   const handleEditSubmit = async (formData: WorkerFormData) => {
     try {
-      // Ensure the form data matches the required format
-      const workerData: WorkerFormData = {
-        ...formData,
-        dailysalary: formData.dailysalary || 0  // Ensure the property name matches
-      };
       if (selectedWorker) {
-        await updateWorker(selectedWorker.id, workerData);
+        await handleSaveEdit({
+          fullName: formData.fullName,
+          personalId: formData.personalId,
+          dailySalary: formData.dailysalary,
+          region_id: formData.region_id
+        });
         setIsEditDialogOpen(false);
         toast({
           title: "Worker Updated",
@@ -123,38 +104,33 @@ function WorkersContent() {
     }
   };
 
-  const handleDeleteSubmit = async () => {
-    try {
-      if (selectedWorker) {
-        await deleteWorker(selectedWorker.id);
-        setIsDeleteDialogOpen(false);
-        toast({
-          title: "Worker Deleted",
-          description: "Worker has been successfully deleted",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error Deleting Worker",
-        description: error.message || "There was an error deleting the worker",
-        variant: "destructive",
-      });
-    }
-  };
-  
   return (
     <div className="container mx-auto px-4 py-6">
-      <WorkersHeader />
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Workers</h1>
+          <p className="text-muted-foreground">Manage construction site workers</p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={handleCreateWorker} className="shrink-0">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Worker
+          </Button>
+        </div>
+      </div>
       
       <div className="my-6 flex flex-col md:flex-row gap-4 justify-between">
         <div className="flex flex-col sm:flex-row gap-4">
-          <WorkersSearch />
-          <WorkersRegionFilter />
+          <div className="relative w-full md:w-64">
+            <input
+              type="text" 
+              placeholder="Search workers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+            />
+          </div>
         </div>
-        <Button onClick={handleCreateWorker} className="shrink-0">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Worker
-        </Button>
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -168,13 +144,13 @@ function WorkersContent() {
         />
       </div>
       
-      {/* Create/Edit Dialog */}
+      {/* Create Dialog */}
       <EditWorkerDialog
-        open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-        onSubmit={handleCreateSubmit}
+        isOpen={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+        onSave={handleCreateSubmit}
         worker={null}
-        isSaving={false}
+        isSaving={isSaving}
         regions={regions || []}
         isCreating={true}
       />
@@ -182,25 +158,25 @@ function WorkersContent() {
       {selectedWorker && (
         <>
           <EditWorkerDialog
-            open={isEditDialogOpen}
-            onOpenChange={setIsEditDialogOpen}
+            isOpen={isEditDialogOpen}
+            onClose={() => setIsEditDialogOpen(false)}
             worker={selectedWorker}
-            onSubmit={handleEditSubmit}
-            isSaving={false}
+            onSave={handleEditSubmit}
+            isSaving={isSaving}
             regions={regions || []}
           />
           
           <DeleteWorkerDialog
-            open={isDeleteDialogOpen}
-            onOpenChange={setIsDeleteDialogOpen}
+            isOpen={isDeleteDialogOpen}
+            onClose={() => setIsDeleteDialogOpen(false)}
             worker={selectedWorker}
-            onConfirm={handleDeleteSubmit}
-            isDeleting={false}
+            onConfirm={handleDelete}
+            isDeleting={isDeleting}
           />
           
           <ViewWorkerDialog
-            open={isViewDialogOpen}
-            onOpenChange={setIsViewDialogOpen}
+            isOpen={isViewDialogOpen}
+            onClose={() => setIsViewDialogOpen(false)}
             worker={selectedWorker}
             regions={regions || []}
           />
@@ -211,9 +187,5 @@ function WorkersContent() {
 }
 
 export default function Workers() {
-  return (
-    <WorkersProvider>
-      <WorkersContent />
-    </WorkersProvider>
-  );
+  return <WorkersContent />;
 }

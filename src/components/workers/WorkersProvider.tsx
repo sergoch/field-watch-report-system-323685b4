@@ -1,4 +1,3 @@
-
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
@@ -45,8 +44,8 @@ export function useWorkersProvider() {
   }, []);
 
   const filteredWorkers = workers.filter(worker => 
-    worker.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    worker.personalId.includes(searchQuery)
+    (worker.fullName || worker.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (worker.personalId || worker.personal_id || '').includes(searchQuery)
   );
 
   const handleSaveEdit = async (formData: {
@@ -62,9 +61,9 @@ export function useWorkersProvider() {
     setIsSaving(true);
     try {
       await updateWorker(editWorker.id, {
-        fullName: formData.fullName,
-        personalId: formData.personalId,
-        dailySalary: formData.dailySalary,
+        full_name: formData.fullName,
+        personal_id: formData.personalId,
+        dailysalary: formData.dailySalary,
         region_id: formData.region_id || null
       });
       
@@ -120,9 +119,9 @@ export function useWorkersProvider() {
     setIsSaving(true);
     try {
       await addWorker({
-        fullName: formData.fullName,
-        personalId: formData.personalId,
-        dailySalary: formData.dailySalary,
+        full_name: formData.fullName,
+        personal_id: formData.personalId,
+        dailysalary: formData.dailySalary,
         region_id: formData.region_id || null
       });
       

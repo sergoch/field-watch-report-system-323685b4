@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
@@ -78,8 +77,8 @@ export function useEquipmentProvider() {
 
   const filteredEquipment = equipment.filter(equip => 
     equip.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    equip.licensePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    equip.operatorName.toLowerCase().includes(searchQuery.toLowerCase())
+    (equip.licensePlate || equip.license_plate || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (equip.operatorName || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleSaveEdit = async (formData: EquipmentFormData) => {
@@ -91,12 +90,14 @@ export function useEquipmentProvider() {
     try {
       await updateEquipment(editEquipment.id, {
         type: formData.type,
-        licensePlate: formData.licensePlate,
+        license_plate: formData.licensePlate,
         operatorName: formData.operatorName,
         operatorId: formData.operatorId,
-        dailysalary: formData.dailySalary, // Map dailySalary to dailysalary
+        dailysalary: formData.dailySalary,
         fuelType: formData.fuelType,
-        region_id: formData.region_id || null
+        region_id: formData.region_id || null,
+        name: editEquipment.name || formData.type,
+        status: editEquipment.status || 'active'
       });
       
       toast({
@@ -147,12 +148,14 @@ export function useEquipmentProvider() {
     try {
       await addEquipment({
         type: formData.type,
-        licensePlate: formData.licensePlate,
+        license_plate: formData.licensePlate,
         operatorName: formData.operatorName,
         operatorId: formData.operatorId,
-        dailysalary: formData.dailySalary, // Changed from dailySalary to dailysalary to match the required type
+        dailysalary: formData.dailySalary,
         fuelType: formData.fuelType,
-        region_id: formData.region_id || null
+        region_id: formData.region_id || null,
+        name: formData.type,
+        status: 'active'
       });
       
       toast({

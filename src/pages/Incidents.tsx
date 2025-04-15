@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -47,7 +46,6 @@ export default function IncidentsPage() {
           )
         `);
         
-        // Only filter by engineer_id if user is not admin
         if (!userIsAdmin && user.id) {
           const engineerId = typeof user.id === 'string' ? user.id : String(user.id);
           query = query.eq('engineer_id', engineerId);
@@ -65,7 +63,6 @@ export default function IncidentsPage() {
         } else if (data) {
           const processedData = data.map(incident => ({
             ...incident,
-            // Transform from snake_case to camelCase for consistency
             id: incident.id,
             date: incident.date,
             type: incident.type,
@@ -92,7 +89,6 @@ export default function IncidentsPage() {
       fetchIncidents();
     }
     
-    // Set up realtime subscription
     const channel = supabase
       .channel('incidents_changes')
       .on('postgres_changes', {
@@ -135,12 +131,12 @@ export default function IncidentsPage() {
   }, [toast]);
 
   const incidentTypes: IncidentType[] = [
-    "Cut", "Parallel", "Damage", "Node", "Hydrant", "Chamber", "Other"
+    'cut', 'parallel', 'damage', 'node', 'hydrant', 'chamber', 'other'
   ];
   
   const filteredIncidents = incidents.filter(incident => 
-    (activeTab === "All" || incident.type === activeTab) &&
-    (regionNames[incident.regionId || ""]?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (activeTab === "All" || incident.type.toLowerCase() === activeTab) &&
+    (regionNames[incident.region_id || ""]?.toLowerCase().includes(searchQuery.toLowerCase()) ||
      incident.description?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -191,7 +187,7 @@ export default function IncidentsPage() {
       ).map(incident => ({
         "Date": new Date(incident.date || "").toLocaleDateString(),
         "Type": incident.type,
-        "Region": regionNames[incident.regionId || ""] || "Unknown",
+        "Region": regionNames[incident.region_id || ""] || "Unknown",
         "Location": `${incident.latitude?.toString() || ""}, ${incident.longitude?.toString() || ""}`,
         "Description": incident.description || ""
       }));
@@ -310,7 +306,7 @@ export default function IncidentsPage() {
         onClose={() => setDeleteIncident(null)}
         onConfirm={handleDeleteIncident}
         title="Delete Incident"
-        description={`Are you sure you want to delete this ${deleteIncident?.type} incident from ${regionNames[deleteIncident?.regionId || ""] || "unknown region"}? This action cannot be undone.`}
+        description={`Are you sure you want to delete this ${deleteIncident?.type} incident from ${regionNames[deleteIncident?.region_id || ""] || "unknown region"}? This action cannot be undone.`}
         isDeleting={isDeleting}
       />
     </div>

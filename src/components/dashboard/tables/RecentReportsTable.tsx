@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
@@ -31,7 +30,6 @@ export function RecentReportsTable({ reports: externalReports, isLoading: extern
   const { user } = useAuth();
   const userIsAdmin = isAdmin(user);
   
-  // Fetch reports if not provided externally
   useEffect(() => {
     if (externalReports) {
       setEngineerReports(externalReports);
@@ -55,7 +53,6 @@ export function RecentReportsTable({ reports: externalReports, isLoading: extern
           .order('date', { ascending: false })
           .limit(5);
           
-        // Filter by engineer ID if not admin
         if (!userIsAdmin) {
           query = query.eq('engineer_id', user.id);
         }
@@ -72,7 +69,6 @@ export function RecentReportsTable({ reports: externalReports, isLoading: extern
           return;
         }
         
-        // Transform data
         const processedReports = data.map(report => ({
           ...report,
           id: report.id,
@@ -94,7 +90,6 @@ export function RecentReportsTable({ reports: externalReports, isLoading: extern
       fetchReports();
     }
     
-    // Set up realtime subscription
     const channel = supabase
       .channel('reports_changes')
       .on('postgres_changes', {
@@ -149,7 +144,7 @@ export function RecentReportsTable({ reports: externalReports, isLoading: extern
                     {reports.map(report => (
                       <TableRow key={report.id}>
                         <TableCell>{new Date(report.date).toLocaleDateString()}</TableCell>
-                        <TableCell>{report.regions?.name || "Unknown"}</TableCell>
+                        <TableCell>{report.region?.name || "Unknown"}</TableCell>
                         <TableCell>{report.totalFuel || report.total_fuel || 0} L</TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="sm" asChild>

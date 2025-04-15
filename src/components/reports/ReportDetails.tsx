@@ -15,7 +15,7 @@ interface ReportDetailsProps {
 export function ReportDetails({ report, onClose }: ReportDetailsProps) {
   if (!report) return null;
 
-  // Get region name from the regionId or show "Unknown"
+  // Get region name from the region_id or show "Unknown"
   const regionName = report.region?.name || "Unknown Region";
 
   return (
@@ -48,13 +48,13 @@ export function ReportDetails({ report, onClose }: ReportDetailsProps) {
               </div>
               <div>
                 <span className="text-muted-foreground">Fuel Used:</span>
-                <p className="text-lg">{report.totalFuel}L</p>
+                <p className="text-lg">{report.totalFuel || report.total_fuel}L</p>
               </div>
             </div>
           </div>
           <div>
             <h3 className="font-semibold">Materials</h3>
-            <p className="mt-1">{report.materialsUsed}</p>
+            <p className="mt-1">{report.materials_used || report.materialsUsed}</p>
           </div>
         </div>
       </DialogContent>

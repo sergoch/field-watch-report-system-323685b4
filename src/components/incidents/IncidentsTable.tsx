@@ -52,7 +52,7 @@ export function IncidentsTable({
                     {incident.type}
                   </span>
                 </TableCell>
-                <TableCell>{regionNames[incident.regionId || ""] || "Unknown"}</TableCell>
+                <TableCell>{regionNames[incident.region_id || ""] || "Unknown"}</TableCell>
                 <TableCell>
                   <span className="text-xs font-mono">
                     {incident.latitude?.toFixed(6) || "N/A"}, {incident.longitude?.toFixed(6) || "N/A"}
