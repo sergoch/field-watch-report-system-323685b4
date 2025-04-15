@@ -27,7 +27,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('Auth state changed:', event, session?.user?.id);
         
         if (event === 'SIGNED_IN' && session) {
-          // For admin users, we'll create a mock user based on the Supabase user
           const supabaseUser = session.user;
           
           try {
@@ -44,27 +43,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 role: 'admin',
               };
               
-              // Store in local storage for persistence
               localStorage.setItem('amradzi_user', JSON.stringify(adminUser));
               setUser(adminUser);
             } else {
-              // For demo purposes, create an engineer user based on the email
-              // In a real app, you'd query the engineers table
+              // For engineers, fetch their assigned regions
+              const { data: engineerData, error: engineerError } = await supabase
+                .from('engineers')
+                .select(`
+                  id,
+                  username,
+                  full_name,
+                  email,
+                  engineer_regions (
+                    region_id
+                  )
+                `)
+                .eq('email', supabaseUser.email)
+                .single();
               
-              // Create a simulated engineer user
-              const name = supabaseUser.email?.split('@')[0] || 'Engineer';
-              const engineerUser: User = {
-                id: supabaseUser.id,
-                name: name.charAt(0).toUpperCase() + name.slice(1),
-                email: supabaseUser.email || '',
-                role: 'engineer',
-                engineerId: supabaseUser.id,
-                assignedRegions: ['region1', 'region2'] // Demo regions
-              };
+              if (engineerError) throw engineerError;
               
-              // Store in local storage for persistence
-              localStorage.setItem('amradzi_user', JSON.stringify(engineerUser));
-              setUser(engineerUser);
+              if (engineerData) {
+                const engineerUser: User = {
+                  id: supabaseUser.id,
+                  name: engineerData.full_name || engineerData.username,
+                  email: engineerData.email || '',
+                  role: 'engineer',
+                  engineerId: engineerData.id,
+                  assignedRegions: engineerData.engineer_regions.map(er => er.region_id)
+                };
+                
+                localStorage.setItem('amradzi_user', JSON.stringify(engineerUser));
+                setUser(engineerUser);
+              }
             }
           } catch (err) {
             console.error('Error processing user data:', err);
@@ -95,9 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const storedUser = localStorage.getItem('amradzi_user');
           if (storedUser) {
             setUser(JSON.parse(storedUser));
-          } else {
-            // User will be set by the onAuthStateChange handler
-            console.log('Session exists but waiting for onAuthStateChange');
           }
         }
         
@@ -130,9 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password: password,
         });
         
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
         
         // Auth state change listener will handle setting the user
         toast({
@@ -141,31 +147,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } else {
         // Engineer login via RPC function
-        const { data, error } = await supabase.rpc('authenticate_engineer', {
+        const { data: engineers, error: engineerError } = await supabase.rpc('authenticate_engineer', {
           p_username: usernameOrEmail,
           p_password: password
         });
         
-        if (error || !data?.[0]) {
+        if (engineerError || !engineers?.[0]) {
           throw new Error('Invalid username or password');
         }
         
-        const engineer = data[0];
+        const engineer = engineers[0];
         
-        // Create a simulated engineer session
-        const engineerUser: User = {
-          id: engineer.id,
-          name: engineer.full_name || engineer.username,
-          email: engineer.email || `${engineer.username}@amradzi-engineer.com`,
-          role: 'engineer',
-          engineerId: engineer.id,
-          assignedRegions: ['region1', 'region2'] // We'll fetch these later
-        };
+        // Now create a Supabase session for the engineer using their email
+        if (!engineer.email) {
+          throw new Error('Engineer email not found');
+        }
         
-        // Store in local storage for persistence
-        localStorage.setItem('amradzi_user', JSON.stringify(engineerUser));
-        setUser(engineerUser);
+        // Sign in with email/password combo stored in auth.users
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: engineer.email,
+          password: password
+        });
         
+        if (error) {
+          console.error('Error signing in engineer:', error);
+          throw new Error('Authentication failed');
+        }
+        
+        // The auth state change listener will handle the rest
         toast({
           title: "Login Successful",
           description: "Welcome back!",
