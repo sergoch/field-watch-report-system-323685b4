@@ -14,17 +14,14 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: AuthProviderProps) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Check for existing session on mount
   useEffect(() => {
@@ -186,6 +183,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         title: "Logout successful",
         description: "You have been logged out",
       });
+
+      // Navigate to login page after logout
+      navigate('/login');
     } catch (error: any) {
       console.error('Logout error:', error);
       setError(error.message || "An error occurred during logout");

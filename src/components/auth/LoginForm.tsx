@@ -5,9 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function LoginForm() {
@@ -17,33 +16,20 @@ export function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'admin' | 'engineer'>('engineer');
   const { login, error } = useAuth();
-  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const loginIdentifier = activeTab === 'admin' ? email : username;
-    
-    if (!loginIdentifier || !password) {
-      toast({
-        title: "Error",
-        description: activeTab === 'admin' 
-          ? "Please enter both email and password" 
-          : "Please enter both username and password",
-        variant: "destructive",
-      });
+    if (!password || !(activeTab === 'admin' ? email : username)) {
       return;
     }
 
     try {
       setIsSubmitting(true);
-      // Pass isAdmin flag based on the active tab
-      await login(loginIdentifier, password, activeTab === 'admin');
-      
-      // If login successful, navigation is handled by the protected route
+      const identifier = activeTab === 'admin' ? email : username;
+      await login(identifier, password, activeTab === 'admin');
     } catch (error) {
       console.error('Login error:', error);
-      // Error is now handled in the context
     } finally {
       setIsSubmitting(false);
     }
@@ -52,8 +38,8 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle className="text-2xl text-center text-amradzi-blue">Amradzi V2.0</CardTitle>
-        <CardDescription className="text-center">Field Control & Incident Reporting System</CardDescription>
+        <CardTitle className="text-2xl text-center">Login</CardTitle>
+        <CardDescription className="text-center">Field Control & Reporting System</CardDescription>
       </CardHeader>
       <CardContent>
         {error && (
@@ -94,7 +80,7 @@ export function LoginForm() {
               </div>
               <Button 
                 type="submit" 
-                className="w-full bg-amradzi-blue hover:bg-amradzi-lightBlue"
+                className="w-full"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? "Logging in..." : "Login"}
@@ -128,7 +114,7 @@ export function LoginForm() {
               </div>
               <Button 
                 type="submit" 
-                className="w-full bg-amradzi-blue hover:bg-amradzi-lightBlue"
+                className="w-full"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? "Logging in..." : "Login"}
@@ -136,24 +122,23 @@ export function LoginForm() {
             </form>
           </TabsContent>
         </Tabs>
-      </CardContent>
-      <CardFooter className="flex justify-center text-sm">
-        <div className="text-muted-foreground w-full space-y-2">
-          <p className="text-center font-semibold">Working Credentials:</p>
+        
+        <div className="mt-4 text-sm text-center space-y-2">
+          <p className="font-semibold">Test Credentials:</p>
           <div className="grid grid-cols-2 gap-4 text-xs">
             <div className="border rounded p-2">
-              <p className="font-bold text-center">Admin</p>
-              <p><span className="font-medium">Email:</span> rasanidze@gmail.com</p>
-              <p><span className="font-medium">Password:</span> admin12345</p>
+              <p className="font-bold">Admin</p>
+              <p>Email: rasanidze@gmail.com</p>
+              <p>Password: admin12345</p>
             </div>
             <div className="border rounded p-2">
-              <p className="font-bold text-center">Engineer</p>
-              <p><span className="font-medium">Username:</span> keda</p>
-              <p><span className="font-medium">Password:</span> engineer12345</p>
+              <p className="font-bold">Engineer</p>
+              <p>Username: keda</p>
+              <p>Password: engineer12345</p>
             </div>
           </div>
         </div>
-      </CardFooter>
+      </CardContent>
     </Card>
   );
 }
