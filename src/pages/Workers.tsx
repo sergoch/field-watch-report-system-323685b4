@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -169,7 +170,10 @@ function WorkersContent() {
             isOpen={isDeleteDialogOpen}
             onClose={() => setIsDeleteDialogOpen(false)}
             worker={selectedWorker}
-            onConfirm={handleDelete}
+            onConfirm={() => {
+              handleDelete();
+              setIsDeleteDialogOpen(false);
+            }}
             isDeleting={isDeleting}
           />
           
