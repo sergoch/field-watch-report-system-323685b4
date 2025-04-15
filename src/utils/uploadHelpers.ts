@@ -31,17 +31,20 @@ export async function uploadReportImage(file: File): Promise<string | null> {
     const fileExt = file.name.split('.').pop();
     const fileName = `${crypto.randomUUID()}.${fileExt}`;
     
-    // Upload the file
+    // Upload the file to the correct bucket with public access
     const { error: uploadError, data } = await supabase.storage
-      .from('Report Images')
-      .upload(fileName, file);
+      .from('report_images')
+      .upload(`incidents/${fileName}`, file, {
+        upsert: false, // Don't overwrite existing files
+        contentType: file.type // Set the content type explicitly
+      });
 
     if (uploadError) throw uploadError;
 
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('Report Images')
-      .getPublicUrl(fileName);
+      .from('report_images')
+      .getPublicUrl(`incidents/${fileName}`);
 
     return publicUrl;
   } catch (error: any) {

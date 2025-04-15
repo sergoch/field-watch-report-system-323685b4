@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import { Camera, MapPin, AlertTriangle, FileImage } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { uploadReportImage } from "@/utils/uploadHelpers";
 
 export default function NewIncidentPage() {
   const [type, setType] = useState<IncidentType>("Damage");
@@ -31,11 +31,9 @@ export default function NewIncidentPage() {
   const { user } = useAuth();
   const [imageFile, setImageFile] = useState<File | null>(null);
 
-  // Get current date formatted
   const currentDate = format(new Date(), "yyyy-MM-dd");
 
   useEffect(() => {
-    // Fetch available regions for the select dropdown
     const fetchRegions = async () => {
       try {
         const { data, error } = await supabase
@@ -52,7 +50,6 @@ export default function NewIncidentPage() {
           });
         } else if (data) {
           setRegions(data);
-          // If user has an assigned region, pre-select it
           if (user?.regionId) {
             setSelectedRegion(user.regionId);
           } else if (data.length > 0) {
@@ -111,7 +108,6 @@ export default function NewIncidentPage() {
     if (file) {
       setImageFile(file);
       
-      // Create image preview
       const reader = new FileReader();
       reader.onload = () => {
         setImagePreview(reader.result as string);
@@ -120,79 +116,9 @@ export default function NewIncidentPage() {
     }
   };
 
-  const uploadImage = async (file: File): Promise<string | null> => {
-    try {
-      if (!file) {
-        toast({
-          title: "Image Required",
-          description: "Please select an image to upload.",
-          variant: "destructive"
-        });
-        return null;
-      }
-
-      // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: "Invalid File Type",
-          description: "Please upload a JPEG or PNG image.",
-          variant: "destructive"
-        });
-        return null;
-      }
-
-      // Validate file size (max 5MB)
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (file.size > maxSize) {
-        toast({
-          title: "File Too Large",
-          description: "Image must be smaller than 5MB.",
-          variant: "destructive"
-        });
-        return null;
-      }
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      const filePath = `incidents/${fileName}`;
-      
-      const { error: uploadError } = await supabase
-        .storage
-        .from('report_images')
-        .upload(filePath, file);
-        
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        toast({
-          title: "Upload Failed",
-          description: uploadError.message || "Could not upload image.",
-          variant: "destructive"
-        });
-        return null;
-      }
-      
-      const { data } = supabase
-        .storage
-        .from('report_images')
-        .getPublicUrl(filePath);
-        
-      return data.publicUrl;
-    } catch (error: any) {
-      console.error("Error uploading image:", error);
-      toast({
-        title: "Submission Error",
-        description: "Failed to upload image. Please try again.",
-        variant: "destructive"
-      });
-      return null;
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
     if (!imageFile) {
       toast({
         title: "Image Required",
@@ -232,14 +158,12 @@ export default function NewIncidentPage() {
     setIsSubmitting(true);
     
     try {
-      // Upload image and get public URL
-      const imageUrl = await uploadImage(imageFile);
+      const imageUrl = await uploadReportImage(imageFile);
       if (!imageUrl) {
         setIsSubmitting(false);
-        return; // uploadImage will have shown a toast
+        return;
       }
       
-      // Save incident to Supabase
       const { data, error } = await supabase
         .from('incidents')
         .insert({
@@ -248,7 +172,7 @@ export default function NewIncidentPage() {
           latitude: location.latitude,
           longitude: location.longitude,
           region_id: selectedRegion,
-          engineer_id: user?.id,
+          engineer_id: user.id,
           date: new Date().toISOString(),
           image_url: imageUrl
         })
