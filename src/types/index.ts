@@ -1,4 +1,3 @@
-
 // User-related types
 export type UserRole = "engineer" | "admin";
 
@@ -7,7 +6,9 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  engineerId?: string;
   regionId?: string;
+  assignedRegions?: string[]; // Added for multi-region support
   region?: Region; // Added region relation
 }
 

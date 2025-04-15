@@ -1,10 +1,11 @@
 
 import { ReactNode, useEffect } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { isAdmin } from '@/utils/auth';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -14,7 +15,6 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   // Verify authentication on mount
@@ -28,15 +28,13 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
           description: "You must be logged in to access this page.",
           variant: "destructive",
         });
-        
-        navigate("/login", { state: { from: location }, replace: true });
       }
     };
 
     if (!isLoading && !user) {
       checkAuthStatus();
     }
-  }, [isLoading, user, navigate, location, toast]);
+  }, [isLoading, user, toast]);
 
   // Show loading state if auth is still being checked
   if (isLoading) {
@@ -54,6 +52,11 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
   // Check for role-based access
   if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  // For admin-only routes, check if user is admin
+  if (allowedRoles?.includes('admin') && !isAdmin(user)) {
     return <Navigate to="/unauthorized" replace />;
   }
 

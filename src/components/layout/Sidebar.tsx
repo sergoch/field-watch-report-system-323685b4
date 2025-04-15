@@ -1,6 +1,8 @@
+
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
+import { isAdmin } from '@/utils/auth';
 import {
   BarChart3,
   ClipboardList,
@@ -10,13 +12,14 @@ import {
   Users,
   AlertTriangle,
   Truck,
-  Wrench
+  Wrench,
+  Map
 } from "lucide-react";
 
 export function SidebarContent() {
   const { user } = useAuth();
   const location = useLocation();
-  const isAdmin = user?.role === "admin";
+  const admin = isAdmin(user);
 
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -45,7 +48,19 @@ export function SidebarContent() {
           Incidents
         </SidebarLink>
         
-        {isAdmin && (
+        {!admin && (
+          <>
+            <SidebarLink href="/workers" icon={Users} active={isActive('/workers')}>
+              Workers
+            </SidebarLink>
+            
+            <SidebarLink href="/equipment" icon={Truck} active={isActive('/equipment')}>
+              Equipment
+            </SidebarLink>
+          </>
+        )}
+        
+        {admin && (
           <>
             <div className="pt-4">
               <hr className="border-muted" />
@@ -54,8 +69,20 @@ export function SidebarContent() {
               </div>
             </div>
             
+            <SidebarLink href="/regions" icon={Map} active={isActive('/regions')}>
+              Regions
+            </SidebarLink>
+            
             <SidebarLink href="/users" icon={Users} active={isActive('/users')}>
               Manage Users
+            </SidebarLink>
+            
+            <SidebarLink href="/workers" icon={Wrench} active={isActive('/workers')}>
+              Workers
+            </SidebarLink>
+            
+            <SidebarLink href="/equipment" icon={Truck} active={isActive('/equipment')}>
+              Equipment
             </SidebarLink>
             
             <SidebarLink href="/settings" icon={Settings} active={isActive('/settings')}>
