@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  error: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   
   // Check for existing session on mount
@@ -74,7 +76,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           return;
         }
         
-        // Cast userData to User type (ensure engineerId is handled in the User interface)
         setUser(userData as User);
       } else {
         setUser(null);
@@ -88,6 +89,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   
   const login = async (email: string, password: string) => {
     try {
+      setError(null);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -104,6 +106,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
     } catch (error: any) {
       console.error('Login error:', error);
+      setError(error.message || "An error occurred during login");
       toast({
         title: "Login failed",
         description: error.message || "An error occurred during login",
@@ -115,6 +118,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   
   const logout = async () => {
     try {
+      setError(null);
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -128,6 +132,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
     } catch (error: any) {
       console.error('Logout error:', error);
+      setError(error.message || "An error occurred during logout");
       toast({
         title: "Logout failed",
         description: error.message || "An error occurred during logout",
@@ -140,6 +145,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const value = {
     user,
     isLoading,
+    error,
     login,
     logout,
   };

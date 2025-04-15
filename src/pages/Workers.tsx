@@ -8,9 +8,17 @@ import { DeleteWorkerDialog } from '@/components/workers/DeleteWorkerDialog';
 import { ViewWorkerDialog } from '@/components/workers/ViewWorkerDialog';
 import { WorkersTable } from '@/components/workers/WorkersTable';
 import { WorkersHeader } from '@/components/workers/WorkersHeader';
-import { WorkersProvider, useWorkersContext, Worker, WorkerFormData } from '@/contexts/WorkerProvider';
+import { WorkersProvider, useWorkersContext } from '@/contexts/WorkerProvider';
 import { WorkersSearch } from '@/components/workers/WorkersSearch';
 import { WorkersRegionFilter } from '@/components/workers/WorkersRegionFilter';
+import { Worker } from '@/types';
+
+interface WorkerFormData {
+  fullName: string;
+  personalId: string;
+  dailysalary: number;
+  region_id: string;
+}
 
 function WorkersContent() {
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
@@ -29,6 +37,7 @@ function WorkersContent() {
     deleteWorker,
     filter,
     setFilter,
+    regions
   } = useWorkersContext();
 
   if (error) {
@@ -152,6 +161,7 @@ function WorkersContent() {
         <WorkersTable 
           workers={workers}
           loading={loading}
+          regions={regions || []}
           onView={handleViewWorker}
           onEdit={handleEditWorker}
           onDelete={handleDeleteWorker}
@@ -163,6 +173,10 @@ function WorkersContent() {
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         onSubmit={handleCreateSubmit}
+        worker={null}
+        isSaving={false}
+        regions={regions || []}
+        isCreating={true}
       />
       
       {selectedWorker && (
@@ -172,6 +186,8 @@ function WorkersContent() {
             onOpenChange={setIsEditDialogOpen}
             worker={selectedWorker}
             onSubmit={handleEditSubmit}
+            isSaving={false}
+            regions={regions || []}
           />
           
           <DeleteWorkerDialog
@@ -179,12 +195,14 @@ function WorkersContent() {
             onOpenChange={setIsDeleteDialogOpen}
             worker={selectedWorker}
             onConfirm={handleDeleteSubmit}
+            isDeleting={false}
           />
           
           <ViewWorkerDialog
             open={isViewDialogOpen}
             onOpenChange={setIsViewDialogOpen}
             worker={selectedWorker}
+            regions={regions || []}
           />
         </>
       )}

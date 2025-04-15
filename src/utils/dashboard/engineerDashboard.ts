@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { FilterParams, EngineerDashboardStats } from "./types";
 import { formatDateForQuery, getDateRangeFromTimeFrame } from "./dateUtils";
@@ -102,9 +103,13 @@ export const fetchEngineerDashboardStats = async (
             const worker = rw.workers as unknown as { id: string; full_name: string; personal_id: string; dailysalary: number };
             workers.push({
               id: workerId,
+              full_name: worker.full_name || '',
+              personal_id: worker.personal_id || '',
+              dailysalary: worker.dailysalary || 0,
+              // Add compatibility fields
               fullName: worker.full_name || '',
               personalId: worker.personal_id || '',
-              dailysalary: worker.dailysalary || 0
+              dailySalary: worker.dailysalary || 0
             } as Worker);
           }
         }
@@ -145,12 +150,16 @@ export const fetchEngineerDashboardStats = async (
             
             equipment.push({
               id: equipId,
+              name: equip.type || '',
               type: equip.type || '',
+              license_plate: equip.license_plate || '',
               licensePlate: equip.license_plate || '',
               operatorId: equip.operator_id || '',
               operatorName: equip.operator_name || '',
               fuelType: equip.fuel_type as "diesel" | "gasoline" || 'diesel',
-              dailysalary: equip.dailysalary || 0
+              dailysalary: equip.dailysalary || 0,
+              dailySalary: equip.dailysalary || 0,
+              status: 'active' // Default status
             } as Equipment);
           }
         }
@@ -210,6 +219,10 @@ export const createMockWorkerData = (count: number): Worker[] => {
     region_id: mockRegions[Math.floor(Math.random() * mockRegions.length)].id,
     status: Math.random() > 0.2 ? 'active' : 'inactive',
     position: randomPosition(),
-    created_at: subDays(new Date(), Math.floor(Math.random() * 365)).toISOString()
+    created_at: subDays(new Date(), Math.floor(Math.random() * 365)).toISOString(),
+    // Compatibility fields
+    fullName: `Worker ${i + 1}`,
+    personalId: `PID${100000 + i}`,
+    dailySalary: randomSalary()
   }));
 };

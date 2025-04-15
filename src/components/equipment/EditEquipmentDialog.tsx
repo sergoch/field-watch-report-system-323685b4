@@ -38,11 +38,11 @@ export function EditEquipmentDialog({
 }: EditEquipmentDialogProps) {
   const [formData, setFormData] = useState<EquipmentFormData>({
     type: equipment?.type || '',
-    licensePlate: equipment?.licensePlate || '',
+    licensePlate: equipment?.licensePlate || equipment?.license_plate || '',
     operatorName: equipment?.operatorName || '',
     operatorId: equipment?.operatorId || '',
-    dailySalary: equipment?.dailySalary || 0,
-    dailysalary: equipment?.dailysalary || 0,
+    dailySalary: equipment?.dailySalary || equipment?.dailysalary || 0,
+    dailysalary: equipment?.dailysalary || equipment?.dailySalary || 0,
     fuelType: equipment?.fuelType || 'diesel',
     region_id: equipment?.region_id || ''
   });
@@ -51,12 +51,12 @@ export function EditEquipmentDialog({
     if (equipment) {
       setFormData({
         type: equipment.type,
-        licensePlate: equipment.licensePlate,
-        operatorName: equipment.operatorName,
-        operatorId: equipment.operatorId,
+        licensePlate: equipment.licensePlate || equipment.license_plate || '',
+        operatorName: equipment.operatorName || '',
+        operatorId: equipment.operatorId || '',
         dailySalary: equipment.dailySalary || equipment.dailysalary || 0,
-        dailysalary: equipment.dailySalary || equipment.dailysalary || 0,
-        fuelType: equipment.fuelType,
+        dailysalary: equipment.dailysalary || equipment.dailySalary || 0,
+        fuelType: equipment.fuelType || 'diesel',
         region_id: equipment.region_id || ''
       });
     } else if (isCreating) {
