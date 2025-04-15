@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { FileText, AlertTriangle, Users, Calendar } from "lucide-react";
+import { FileText, AlertTriangle, Users, Calendar, Truck, Briefcase } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DateRange } from "react-day-picker";
@@ -347,7 +347,7 @@ export function EngineerDashboard() {
             <RecentIncidentsTable incidents={stats.recentIncidents} />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
             <Button asChild>
               <Link to="/reports/new">
                 <FileText className="mr-2 h-4 w-4" />
@@ -358,6 +358,18 @@ export function EngineerDashboard() {
               <Link to="/incidents/new">
                 <AlertTriangle className="mr-2 h-4 w-4" />
                 Report Incident
+              </Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link to="/workers">
+                <Briefcase className="mr-2 h-4 w-4" />
+                Manage Workers
+              </Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link to="/equipment">
+                <Truck className="mr-2 h-4 w-4" />
+                Manage Equipment
               </Link>
             </Button>
           </div>

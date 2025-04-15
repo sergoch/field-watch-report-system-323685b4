@@ -1,5 +1,5 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,10 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { IncidentType } from "@/types";
 import { format } from "date-fns";
 import { Camera, MapPin, AlertTriangle, FileImage } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function NewIncidentPage() {
   const [type, setType] = useState<IncidentType>("Damage");
@@ -18,13 +21,51 @@ export default function NewIncidentPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [description, setDescription] = useState("");
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [regions, setRegions] = useState<{ id: string, name: string }[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   // Get current date formatted
   const currentDate = format(new Date(), "yyyy-MM-dd");
+
+  useEffect(() => {
+    // Fetch available regions for the select dropdown
+    const fetchRegions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('regions')
+          .select('id, name')
+          .order('name');
+          
+        if (error) {
+          console.error('Error fetching regions:', error);
+          toast({
+            title: "Error",
+            description: "Could not load regions. Please try again later.",
+            variant: "destructive",
+          });
+        } else if (data) {
+          setRegions(data);
+          // If user has an assigned region, pre-select it
+          if (user?.regionId) {
+            setSelectedRegion(user.regionId);
+          } else if (data.length > 0) {
+            setSelectedRegion(data[0].id);
+          }
+        }
+      } catch (err) {
+        console.error('Exception when fetching regions:', err);
+      }
+    };
+
+    fetchRegions();
+  }, [user, toast]);
 
   const handleDetectLocation = () => {
     setIsLoadingLocation(true);
@@ -68,6 +109,8 @@ export default function NewIncidentPage() {
     const file = e.target.files?.[0];
     
     if (file) {
+      setImageFile(file);
+      
       // Create image preview
       const reader = new FileReader();
       reader.onload = () => {
@@ -77,11 +120,40 @@ export default function NewIncidentPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const uploadImage = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+      const filePath = `incidents/${fileName}`;
+      
+      // Upload file to Supabase Storage
+      const { error: uploadError } = await supabase
+        .storage
+        .from('incidents')
+        .upload(filePath, file);
+        
+      if (uploadError) {
+        throw uploadError;
+      }
+      
+      // Get the public URL
+      const { data } = supabase
+        .storage
+        .from('incidents')
+        .getPublicUrl(filePath);
+        
+      return data.publicUrl;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      return null;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate required fields
-    if (!imagePreview) {
+    if (!imageFile) {
       toast({
         title: "Image Required",
         description: "Please capture or upload an image of the incident.",
@@ -99,13 +171,68 @@ export default function NewIncidentPage() {
       return;
     }
     
-    // In a real app, call API to save the incident
-    toast({
-      title: "Incident Reported",
-      description: `${type} incident has been reported successfully.`,
-    });
+    if (!selectedRegion) {
+      toast({
+        title: "Region Required",
+        description: "Please select a region.",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    navigate("/incidents");
+    if (!user?.id) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to report an incident.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Upload image and get public URL
+      const imageUrl = await uploadImage(imageFile);
+      if (!imageUrl) {
+        throw new Error("Failed to upload image");
+      }
+      
+      // Save incident to Supabase
+      const { data, error } = await supabase
+        .from('incidents')
+        .insert({
+          type,
+          description,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          region_id: selectedRegion,
+          engineer_id: user.id,
+          date: new Date().toISOString(),
+          image_url: imageUrl
+        })
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Incident Reported",
+        description: `${type} incident has been reported successfully.`,
+      });
+      
+      navigate("/incidents");
+    } catch (error: any) {
+      console.error("Error saving incident:", error);
+      toast({
+        title: "Submission Error",
+        description: error.message || "Failed to save the incident. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -128,8 +255,27 @@ export default function NewIncidentPage() {
               </div>
               
               <div>
+                <Label className="mb-2 block">Region</Label>
+                <Select 
+                  value={selectedRegion || ""} 
+                  onValueChange={setSelectedRegion}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a region" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regions.map(region => (
+                      <SelectItem key={region.id} value={region.id}>
+                        {region.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
                 <Label className="mb-2 block">Incident Type</Label>
-                <RadioGroup defaultValue="damage" value={type} onValueChange={(value) => setType(value as IncidentType)}>
+                <RadioGroup value={type} onValueChange={(value) => setType(value as IncidentType)}>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="Cut" id="cut" />
@@ -275,8 +421,8 @@ export default function NewIncidentPage() {
                 <Button type="button" variant="outline" onClick={() => navigate("/incidents")}>
                   Cancel
                 </Button>
-                <Button type="submit">
-                  Submit Report
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Submitting..." : "Submit Report"}
                 </Button>
               </CardFooter>
             </Card>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -31,7 +30,6 @@ export default function IncidentsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [regionNames, setRegionNames] = useState<Record<string, string>>({});
   
-  // Configure realtime subscription with role-based filtering
   const { 
     data: incidents, 
     loading,
@@ -40,40 +38,43 @@ export default function IncidentsPage() {
     setData: setIncidents 
   } = useSupabaseRealtime<Incident>({
     tableName: 'incidents',
-    initialFetch: false, // We'll fetch manually with filters
+    initialFetch: false,
   });
 
   useEffect(() => {
-    // Fetch incidents with role-based filtering
     const fetchIncidents = async () => {
-      let query = supabase.from('incidents').select(`
-        *,
-        regions (
-          name
-        )
-      `);
-      
-      // If not admin, only show the user's incidents
-      if (!isAdmin && user?.id) {
-        query = query.eq('engineer_id', user.id);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('Error fetching incidents:', error);
-        toast({
-          title: "Error loading incidents",
-          description: error.message,
-          variant: "destructive"
-        });
-      } else if (data) {
-        // Store the fetched incidents in the state
-        setIncidents(data);
+      try {
+        let query = supabase.from('incidents').select(`
+          *,
+          regions (
+            name
+          )
+        `);
+        
+        if (!isAdmin && user?.id) {
+          query = query.eq('engineer_id', user.id.toString());
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error('Error fetching incidents:', error);
+          toast({
+            title: "Error loading incidents",
+            description: error.message,
+            variant: "destructive"
+          });
+        } else if (data) {
+          setIncidents(data);
+        }
+      } catch (err) {
+        console.error('Exception when fetching incidents:', err);
       }
     };
     
-    fetchIncidents();
+    if (user) {
+      fetchIncidents();
+    }
   }, [user, isAdmin, setIncidents, toast]);
 
   useEffect(() => {
@@ -90,7 +91,7 @@ export default function IncidentsPage() {
     
     fetchRegions();
   }, []);
-  
+
   const incidentTypes: IncidentType[] = [
     "Cut", "Parallel", "Damage", "Node", "Hydrant", "Chamber", "Other"
   ];
@@ -164,22 +165,6 @@ export default function IncidentsPage() {
       });
     }
   };
-
-  // Fetch regions effect 
-  useEffect(() => {
-    const fetchRegions = async () => {
-      const { data } = await supabase.from('regions').select('id, name');
-      if (data) {
-        const regions: Record<string, string> = {};
-        data.forEach(region => {
-          regions[region.id] = region.name;
-        });
-        setRegionNames(regions);
-      }
-    };
-    
-    fetchRegions();
-  }, []);
 
   return (
     <div className="space-y-6">

@@ -1,28 +1,35 @@
 
-import { supabase } from '@/integrations/supabase/client';
-
-// Enable realtime for all tables
-export const enableRealtimeForTables = async () => {
-  try {
-    // Execute SQL to enable REPLICA IDENTITY FULL for tables
-    await supabase.rpc('enable_realtime', {
-      tables: ['reports', 'incidents', 'workers', 'equipment', 'report_workers', 'report_equipment', 'regions', 'settings']
-    });
-    
-    console.log('Realtime enabled for all tables');
-    return true;
-  } catch (error) {
-    console.error('Error enabling realtime:', error);
-    return false;
-  }
-};
-
-// Get the current supabase client instance
-export const getSupabaseClient = () => {
-  return supabase;
-};
+import { supabase } from "@/integrations/supabase/client";
 
 export const initializeApp = async () => {
-  // Enable realtime functionality
-  await enableRealtimeForTables();
+  try {
+    // Enable realtime subscriptions for all tables we're using
+    const tables = ["reports", "incidents", "workers", "equipment", "report_workers", "report_equipment", "regions", "settings"];
+    
+    // Check if Supabase is using postgreSQL function for enabling realtime
+    try {
+      await supabase.rpc('enable_realtime', { tables });
+    } catch (error) {
+      console.warn('Realtime subscriptions using RPC not available, falling back to channel setup');
+      
+      // Set up individual channels for each table
+      tables.forEach(table => {
+        const channel = supabase.channel(`${table}-changes`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table,
+          }, (payload) => {
+            console.log(`Change in ${table}:`, payload);
+          })
+          .subscribe();
+      });
+    }
+    
+    console.log("Initialized realtime functionalities");
+    return true;
+  } catch (error) {
+    console.error("Error initializing realtime functionality:", error);
+    return false;
+  }
 };

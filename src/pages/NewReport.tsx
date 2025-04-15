@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,30 +13,93 @@ import { CalendarIcon, Plus, Minus, UserPlus, Truck } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function NewReportPage() {
   const [date, setDate] = useState<Date>(new Date());
   const [selectedWorkers, setSelectedWorkers] = useState<string[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<{id: string, fuelAmount: number}[]>([]);
+  const [regions, setRegions] = useState<{ id: string, name: string }[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [description, setDescription] = useState("");
+  const [materialsUsed, setMaterialsUsed] = useState("");
+  const [materialsReceived, setMaterialsReceived] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
-  // Mock data for workers and equipment
-  const mockWorkers = [
-    { id: "1", name: "Giorgi Beridze" },
-    { id: "2", name: "Nino Khelaia" },
-    { id: "3", name: "Davit Kapanadze" },
-    { id: "4", name: "Tamar Lomidze" },
-    { id: "5", name: "Levan Maisuradze" },
-  ];
-  
-  const mockEquipment = [
-    { id: "1", name: "Excavator (AA-001-AA)" },
-    { id: "2", name: "Bulldozer (BB-002-BB)" },
-    { id: "3", name: "Crane (CC-003-CC)" },
-    { id: "4", name: "Truck (DD-004-DD)" },
-    { id: "5", name: "Loader (EE-005-EE)" },
-  ];
+  // States for available workers and equipment
+  const [availableWorkers, setAvailableWorkers] = useState<{ id: string, fullName: string, dailySalary: number }[]>([]);
+  const [availableEquipment, setAvailableEquipment] = useState<{ id: string, type: string, licensePlate: string }[]>([]);
+
+  // Fetch regions, workers, and equipment on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch regions
+        const { data: regionData, error: regionError } = await supabase
+          .from('regions')
+          .select('id, name')
+          .order('name');
+          
+        if (regionError) {
+          console.error('Error fetching regions:', regionError);
+          toast({
+            title: "Error",
+            description: "Could not load regions. Please try again later.",
+            variant: "destructive",
+          });
+        } else if (regionData) {
+          setRegions(regionData);
+          // If user has an assigned region, pre-select it
+          if (user?.regionId) {
+            setSelectedRegion(user.regionId);
+          } else if (regionData.length > 0) {
+            setSelectedRegion(regionData[0].id);
+          }
+        }
+        
+        // Fetch workers
+        const { data: workerData, error: workerError } = await supabase
+          .from('workers')
+          .select('id, full_name, daily_salary')
+          .order('full_name');
+          
+        if (workerError) {
+          console.error('Error fetching workers:', workerError);
+        } else if (workerData) {
+          setAvailableWorkers(workerData.map(worker => ({
+            id: worker.id,
+            fullName: worker.full_name,
+            dailySalary: worker.daily_salary
+          })));
+        }
+        
+        // Fetch equipment
+        const { data: equipmentData, error: equipmentError } = await supabase
+          .from('equipment')
+          .select('id, type, license_plate')
+          .order('type');
+          
+        if (equipmentError) {
+          console.error('Error fetching equipment:', equipmentError);
+        } else if (equipmentData) {
+          setAvailableEquipment(equipmentData.map(equip => ({
+            id: equip.id,
+            type: equip.type,
+            licensePlate: equip.license_plate
+          })));
+        }
+      } catch (err) {
+        console.error('Exception when fetching data:', err);
+      }
+    };
+
+    fetchData();
+  }, [user, toast]);
 
   const addWorker = (workerId: string) => {
     if (!selectedWorkers.includes(workerId)) {
@@ -64,22 +127,120 @@ export default function NewReportPage() {
     ));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, call API to save the report
     
-    toast({
-      title: "Report Created",
-      description: `Daily report for ${format(date, "PPP")} has been created.`,
-    });
+    if (!selectedRegion) {
+      toast({
+        title: "Region Required",
+        description: "Please select a region for this report.",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    navigate("/reports");
+    if (!user?.id) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to create a report.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Calculate totals
+      const totalFuel = selectedEquipment.reduce((sum, item) => sum + item.fuelAmount, 0);
+      const totalWorkerSalary = selectedWorkers.reduce((sum, workerId) => {
+        const worker = availableWorkers.find(w => w.id === workerId);
+        return sum + (worker?.dailySalary || 0);
+      }, 0);
+      
+      // Format date for Supabase
+      const formattedDate = format(date, "yyyy-MM-dd");
+      
+      // 1. Insert the report
+      const { data: reportData, error: reportError } = await supabase
+        .from('reports')
+        .insert({
+          date: formattedDate,
+          region_id: selectedRegion,
+          engineer_id: user.id,
+          description,
+          materials_used: materialsUsed,
+          materials_received: materialsReceived,
+          total_fuel: totalFuel,
+          total_worker_salary: totalWorkerSalary
+        })
+        .select('id');
+      
+      if (reportError) {
+        throw reportError;
+      }
+      
+      const reportId = reportData[0].id;
+      
+      // 2. Insert worker relationships
+      if (selectedWorkers.length > 0) {
+        const workerRelations = selectedWorkers.map(workerId => ({
+          report_id: reportId,
+          worker_id: workerId
+        }));
+        
+        const { error: workersError } = await supabase
+          .from('report_workers')
+          .insert(workerRelations);
+          
+        if (workersError) {
+          console.error('Error inserting worker relations:', workersError);
+        }
+      }
+      
+      // 3. Insert equipment relationships
+      if (selectedEquipment.length > 0) {
+        const equipmentRelations = selectedEquipment.map(equip => ({
+          report_id: reportId,
+          equipment_id: equip.id,
+          fuel_amount: equip.fuelAmount
+        }));
+        
+        const { error: equipmentError } = await supabase
+          .from('report_equipment')
+          .insert(equipmentRelations);
+          
+        if (equipmentError) {
+          console.error('Error inserting equipment relations:', equipmentError);
+        }
+      }
+      
+      toast({
+        title: "Report Created",
+        description: `Daily report for ${format(date, "PPP")} has been created.`,
+      });
+      
+      navigate("/reports");
+    } catch (error: any) {
+      console.error("Error creating report:", error);
+      toast({
+        title: "Submission Error",
+        description: error.message || "Failed to create the report. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Calculate totals
   const totalWorkers = selectedWorkers.length;
   const totalEquipment = selectedEquipment.length;
   const totalFuel = selectedEquipment.reduce((sum, item) => sum + item.fuelAmount, 0);
+  const totalWorkerSalary = selectedWorkers.reduce((sum, workerId) => {
+    const worker = availableWorkers.find(w => w.id === workerId);
+    return sum + (worker?.dailySalary || 0);
+  }, 0);
 
   return (
     <div className="space-y-6">
@@ -124,17 +285,20 @@ export default function NewReportPage() {
               
               <div className="space-y-2">
                 <Label htmlFor="region">Region</Label>
-                <Select defaultValue="north">
+                <Select 
+                  value={selectedRegion || ""}
+                  onValueChange={setSelectedRegion}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a region" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value="north">North</SelectItem>
-                      <SelectItem value="south">South</SelectItem>
-                      <SelectItem value="east">East</SelectItem>
-                      <SelectItem value="west">West</SelectItem>
-                      <SelectItem value="central">Central</SelectItem>
+                      {regions.map(region => (
+                        <SelectItem key={region.id} value={region.id}>
+                          {region.name}
+                        </SelectItem>
+                      ))}
                     </SelectGroup>
                   </SelectContent>
                 </Select>
@@ -146,6 +310,8 @@ export default function NewReportPage() {
                   id="description"
                   placeholder="Describe the work done today"
                   rows={4}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
               
@@ -155,6 +321,8 @@ export default function NewReportPage() {
                   id="materialsUsed"
                   placeholder="List materials used"
                   rows={2}
+                  value={materialsUsed}
+                  onChange={(e) => setMaterialsUsed(e.target.value)}
                 />
               </div>
               
@@ -164,6 +332,8 @@ export default function NewReportPage() {
                   id="materialsReceived"
                   placeholder="List materials received"
                   rows={2}
+                  value={materialsReceived}
+                  onChange={(e) => setMaterialsReceived(e.target.value)}
                 />
               </div>
             </CardContent>
@@ -182,24 +352,31 @@ export default function NewReportPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        {mockWorkers.filter(worker => !selectedWorkers.includes(worker.id)).map(worker => (
-                          <SelectItem key={worker.id} value={worker.id}>{worker.name}</SelectItem>
-                        ))}
+                        {availableWorkers
+                          .filter(worker => !selectedWorkers.includes(worker.id))
+                          .map(worker => (
+                            <SelectItem key={worker.id} value={worker.id}>
+                              {worker.fullName} (${worker.dailySalary}/day)
+                            </SelectItem>
+                          ))
+                        }
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                  <Button type="button" variant="outline" size="icon" onClick={() => selectedWorkers.length > 0 && addWorker(selectedWorkers[selectedWorkers.length - 1])}>
-                    <UserPlus className="h-4 w-4" />
-                  </Button>
                 </div>
                 
                 <div className="space-y-2">
                   {selectedWorkers.length > 0 ? (
                     selectedWorkers.map(workerId => {
-                      const worker = mockWorkers.find(w => w.id === workerId);
+                      const worker = availableWorkers.find(w => w.id === workerId);
                       return (
                         <div key={workerId} className="flex items-center justify-between p-2 border rounded-md">
-                          <span>{worker?.name}</span>
+                          <div>
+                            <span>{worker?.fullName}</span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              ${worker?.dailySalary}/day
+                            </span>
+                          </div>
                           <Button type="button" variant="ghost" size="icon" onClick={() => removeWorker(workerId)}>
                             <Minus className="h-4 w-4" />
                           </Button>
@@ -227,24 +404,26 @@ export default function NewReportPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        {mockEquipment.filter(equip => !selectedEquipment.some(item => item.id === equip.id)).map(equip => (
-                          <SelectItem key={equip.id} value={equip.id}>{equip.name}</SelectItem>
-                        ))}
+                        {availableEquipment
+                          .filter(equip => !selectedEquipment.some(item => item.id === equip.id))
+                          .map(equip => (
+                            <SelectItem key={equip.id} value={equip.id}>
+                              {equip.type} ({equip.licensePlate})
+                            </SelectItem>
+                          ))
+                        }
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                  <Button type="button" variant="outline" size="icon">
-                    <Truck className="h-4 w-4" />
-                  </Button>
                 </div>
                 
                 <div className="space-y-2">
                   {selectedEquipment.length > 0 ? (
                     selectedEquipment.map(item => {
-                      const equipment = mockEquipment.find(e => e.id === item.id);
+                      const equipment = availableEquipment.find(e => e.id === item.id);
                       return (
                         <div key={item.id} className="flex items-center justify-between p-2 border rounded-md">
-                          <span>{equipment?.name}</span>
+                          <span>{equipment?.type} ({equipment?.licensePlate})</span>
                           <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1">
                               <Label htmlFor={`fuel-${item.id}`} className="text-xs">Fuel (L):</Label>
@@ -290,14 +469,18 @@ export default function NewReportPage() {
                     <span>Total Fuel:</span>
                     <span className="font-medium">{totalFuel} L</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span>Total Worker Salary:</span>
+                    <span className="font-medium">${totalWorkerSalary}</span>
+                  </div>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Button type="button" variant="outline" onClick={() => navigate("/reports")}>
                   Cancel
                 </Button>
-                <Button type="submit">
-                  Save Report
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Saving..." : "Save Report"}
                 </Button>
               </CardFooter>
             </Card>
