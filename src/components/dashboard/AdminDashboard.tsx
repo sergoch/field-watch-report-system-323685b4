@@ -1,19 +1,21 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { DateRange } from "react-day-picker";
 import { useToast } from "@/hooks/use-toast";
-import { AdminDashboardStats, TimeFrame } from "@/utils/dashboard/types";
-import { fetchAdminDashboardStats } from "@/utils/dashboard/adminDashboard";
+import { TimeFrame } from "@/utils/dashboard/types";
 import { DashboardFilters } from './filters/DashboardFilters';
 import { DashboardStatsOverview } from './stats/DashboardStatsOverview';
 import { DashboardCharts } from './charts/DashboardCharts';
 import { DashboardQuickActions } from './actions/DashboardQuickActions';
+import { DashboardHeader } from './header/DashboardHeader';
 import { RecentReportsTable } from './tables/RecentReportsTable';
 import { RecentIncidentsTable } from './tables/RecentIncidentsTable';
-import { supabase } from "@/integrations/supabase/client";
 import { BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useAdminDashboardData } from "@/hooks/dashboard/useAdminDashboardData";
+import { supabase } from "@/integrations/supabase/client";
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -22,91 +24,13 @@ export function AdminDashboard() {
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("week");
   const [regionId, setRegionId] = useState<string | undefined>();
   const [engineerId, setEngineerId] = useState<string | undefined>();
-  const [stats, setStats] = useState<AdminDashboardStats>({
-    workerCount: 0,
-    equipmentCount: 0,
-    operatorCount: 0,
-    fuelByType: [],
-    incidentsByType: [],
-    recentReports: [],
-    recentIncidents: [],
-    regionsData: []
+
+  const { stats, isLoading } = useAdminDashboardData({
+    timeFrame,
+    dateRange,
+    regionId,
+    engineerId
   });
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchDashboardStats = async () => {
-      setIsLoading(true);
-      
-      try {
-        const data = await fetchAdminDashboardStats({
-          timeFrame,
-          dateRange,
-          regionId,
-          engineerId
-        });
-        setStats(data);
-      } catch (error) {
-        console.error('Error fetching admin dashboard stats:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDashboardStats();
-    
-    // Set up realtime subscriptions to update stats when data changes
-    const reportsChannel = supabase
-      .channel('public:reports')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'reports'
-      }, () => {
-        fetchDashboardStats();
-      })
-      .subscribe();
-      
-    const incidentsChannel = supabase
-      .channel('public:incidents')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'incidents'
-      }, () => {
-        fetchDashboardStats();
-      })
-      .subscribe();
-      
-    const workersChannel = supabase
-      .channel('public:workers')
-      .on('postgres_changes', {
-        event: '*', 
-        schema: 'public',
-        table: 'workers'
-      }, () => {
-        fetchDashboardStats();
-      })
-      .subscribe();
-      
-    const equipmentChannel = supabase
-      .channel('public:equipment')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public', 
-        table: 'equipment'
-      }, () => {
-        fetchDashboardStats();
-      })
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(reportsChannel);
-      supabase.removeChannel(incidentsChannel);
-      supabase.removeChannel(workersChannel);
-      supabase.removeChannel(equipmentChannel);
-    };
-  }, [timeFrame, dateRange, regionId, engineerId]);
 
   const handleCleanTestData = async () => {
     try {
@@ -141,12 +65,7 @@ export function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-sky-900">Welcome, {user?.name}</h1>
-          <p className="text-muted-foreground">
-            Administrator Dashboard
-          </p>
-        </div>
+        <DashboardHeader user={user} />
         <div className="flex flex-wrap gap-4">
           <DashboardFilters
             timeFrame={timeFrame}
