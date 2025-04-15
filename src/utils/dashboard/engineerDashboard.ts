@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { FilterParams, EngineerDashboardStats } from "./types";
 import { formatDateForQuery, getDateRangeFromTimeFrame } from "./dateUtils";
+import { Worker, Equipment, Report, Incident } from "@/types";
 
 export const fetchEngineerDashboardStats = async (
   userId: string,
@@ -101,7 +102,7 @@ export const fetchEngineerDashboardStats = async (
               fullName: worker.full_name || '',
               personalId: worker.personal_id || '',
               dailySalary: worker.daily_salary || 0
-            });
+            } as Worker);
           }
         }
       });
@@ -147,7 +148,7 @@ export const fetchEngineerDashboardStats = async (
               operatorName: equip.operator_name || '',
               fuelType: equip.fuel_type as "diesel" | "gasoline" || 'diesel',
               dailySalary: equip.daily_salary || 0
-            });
+            } as Equipment);
           }
         }
       });
