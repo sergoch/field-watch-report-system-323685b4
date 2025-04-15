@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -63,7 +62,7 @@ function WorkersContent() {
       await handleCreateNew({
         fullName: formData.fullName,
         personalId: formData.personalId,
-        dailySalary: formData.dailysalary,
+        dailysalary: formData.dailysalary,
         region_id: formData.region_id
       });
       setIsCreateDialogOpen(false);
@@ -86,7 +85,7 @@ function WorkersContent() {
         await handleSaveEdit({
           fullName: formData.fullName,
           personalId: formData.personalId,
-          dailySalary: formData.dailysalary,
+          dailysalary: formData.dailysalary,
           region_id: formData.region_id
         });
         setIsEditDialogOpen(false);
