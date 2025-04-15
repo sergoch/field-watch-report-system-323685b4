@@ -3,6 +3,7 @@ export interface Report {
   id: string;
   date: string;
   region_id: string;
+  regionId?: string;
   region?: Region;
   created_at?: string;
   materials_used?: string;
@@ -57,7 +58,7 @@ export interface Incident {
   region?: Region;
   description: string;
   created_at?: string;
-  type: string;
+  type: IncidentType | string;
   latitude?: number;
   longitude?: number;
   imageUrl?: string;
@@ -111,18 +112,17 @@ export interface Worker {
 
 export interface Equipment {
   id: string;
-  name?: string; // Add missing properties required by type
+  name?: string; 
   type: string;
-  status?: string; // Add missing properties required by type
-  licensePlate?: string;
   license_plate?: string;
-  operatorName?: string; // Add new fields
-  operatorId?: string; // Add new fields
-  status?: string;
+  licensePlate?: string;
+  operatorName?: string;
+  operatorId?: string;
   dailysalary: number;
   dailySalary?: number;
   region_id?: string;
   region?: Region;
   created_at?: string;
   fuelType?: 'diesel' | 'gasoline';
+  status?: string;
 }

@@ -1,4 +1,3 @@
-
 import { Incident, Report, Worker, Equipment } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, subWeeks, subMonths, isAfter } from "date-fns";
@@ -158,14 +157,21 @@ export async function fetchEngineerDashboardStats(
     id: report.id,
     date: report.date,
     description: report.description || '',
+    region_id: report.region_id || '',
     regionId: report.region_id || '',
+    engineer_id: report.engineer_id,
     engineerId: report.engineer_id,
+    materials_used: report.materials_used || '',
     materialsUsed: report.materials_used || '',
+    materials_received: report.materials_received || '',
     materialsReceived: report.materials_received || '',
+    total_fuel: report.total_fuel || 0,
     totalFuel: report.total_fuel || 0,
+    total_worker_salary: report.total_worker_salary || 0,
     totalWorkerSalary: report.total_worker_salary || 0,
     workers: [],
     equipment: [],
+    region: report.regions,
     regions: report.regions
   }));
   
@@ -173,17 +179,17 @@ export async function fetchEngineerDashboardStats(
     id: incident.id,
     date: incident.date,
     type: incident.type as any,
-    imageUrl: incident.image_url || '',
-    location: {
-      latitude: incident.latitude || 0,
-      longitude: incident.longitude || 0
-    },
-    description: incident.description || '',
-    engineerId: incident.engineer_id,
+    region_id: incident.region_id || '',
     regionId: incident.region_id || '',
-    regions: incident.regions,
-    latitude: incident.latitude,
-    longitude: incident.longitude
+    image_url: incident.image_url || '',
+    imageUrl: incident.image_url || '',
+    latitude: incident.latitude || 0,
+    longitude: incident.longitude || 0,
+    description: incident.description || '',
+    engineer_id: incident.engineer_id,
+    engineerId: incident.engineer_id,
+    region: incident.regions,
+    regions: incident.regions
   }));
   
   return {
@@ -292,14 +298,21 @@ export async function fetchAdminDashboardStats(
     id: report.id,
     date: report.date,
     description: report.description || '',
+    region_id: report.region_id || '',
     regionId: report.region_id || '',
+    engineer_id: report.engineer_id,
     engineerId: report.engineer_id,
+    materials_used: report.materials_used || '',
     materialsUsed: report.materials_used || '',
+    materials_received: report.materials_received || '',
     materialsReceived: report.materials_received || '',
+    total_fuel: report.total_fuel || 0,
     totalFuel: report.total_fuel || 0,
+    total_worker_salary: report.total_worker_salary || 0,
     totalWorkerSalary: report.total_worker_salary || 0,
     workers: [],
     equipment: [],
+    region: report.regions,
     regions: report.regions
   }));
   
@@ -307,17 +320,17 @@ export async function fetchAdminDashboardStats(
     id: incident.id,
     date: incident.date,
     type: incident.type as any,
-    imageUrl: incident.image_url || '',
-    location: {
-      latitude: incident.latitude || 0,
-      longitude: incident.longitude || 0
-    },
-    description: incident.description || '',
-    engineerId: incident.engineer_id,
+    region_id: incident.region_id || '',
     regionId: incident.region_id || '',
-    regions: incident.regions,
-    latitude: incident.latitude,
-    longitude: incident.longitude
+    image_url: incident.image_url || '',
+    imageUrl: incident.image_url || '',
+    latitude: incident.latitude || 0,
+    longitude: incident.longitude || 0,
+    description: incident.description || '',
+    engineer_id: incident.engineer_id,
+    engineerId: incident.engineer_id,
+    region: incident.regions,
+    regions: incident.regions
   }));
   
   return {
