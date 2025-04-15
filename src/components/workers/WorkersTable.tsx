@@ -96,7 +96,7 @@ export function WorkersTable({
                 <TableCell className="font-medium">{worker.fullName}</TableCell>
                 <TableCell>{worker.personalId}</TableCell>
                 <TableCell>{region?.name || "Unassigned"}</TableCell>
-                <TableCell>{worker.dailySalary}</TableCell>
+                <TableCell>{worker.dailysalary}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button 

@@ -92,8 +92,8 @@ export default function ReportsPage() {
   const filteredReports = allReports.filter(report => {
     const matchesSearch = (
       (report.region?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (report.materialsUsed || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (report.materialsReceived || '').toLowerCase().includes(searchQuery.toLowerCase())
+      (report.materials_used || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (report.materials_received || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
     
     if (!dateRange?.from || !dateRange?.to) return matchesSearch;
@@ -137,8 +137,8 @@ export default function ReportsPage() {
           "Workers Count": report.workers?.length || 0,
           "Equipment Count": report.equipment?.length || 0,
           "Total Fuel (L)": report.totalFuel || 0,
-          "Materials Used": report.materialsUsed || "",
-          "Materials Received": report.materialsReceived || "",
+          "Materials Used": report.materials_used || "",
+          "Materials Received": report.materials_received || "",
           "Description": report.description || ""
         };
       });

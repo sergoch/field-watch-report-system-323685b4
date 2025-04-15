@@ -2,12 +2,11 @@
 import { ReactNode, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { MainLayout } from '@/components/layout/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { isAdmin } from '@/utils/auth';
 
-interface ProtectedRouteProps {
+export interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles?: string[];
 }
@@ -51,7 +50,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   // Check for role-based access
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && !allowedRoles.includes(user.role || '')) {
     return <Navigate to="/unauthorized" replace />;
   }
 
@@ -60,5 +59,5 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/unauthorized" replace />;
   }
 
-  return <MainLayout>{children}</MainLayout>;
+  return <>{children}</>;
 }

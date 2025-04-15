@@ -40,12 +40,12 @@ export function ViewWorkerDialog({
             </div>
             <div>
               <Label className="font-semibold">Daily Salary</Label>
-              <p>{worker.dailySalary} GEL</p>
+              <p>{worker.dailysalary} GEL</p>
             </div>
-            {worker?.createdAt && (
+            {worker?.created_at && (
               <div>
                 <Label className="font-semibold">Created At</Label>
-                <p>{new Date(worker.createdAt).toLocaleDateString()}</p>
+                <p>{new Date(worker.created_at).toLocaleDateString()}</p>
               </div>
             )}
           </div>

@@ -9,7 +9,7 @@ import { Worker } from "@/types";
 interface WorkerFormData {
   fullName: string;
   personalId: string;
-  dailySalary: number;
+  dailysalary: number;
   region_id: string;
 }
 
@@ -35,7 +35,7 @@ export function EditWorkerDialog({
   const [formData, setFormData] = useState<WorkerFormData>({
     fullName: worker?.fullName || '',
     personalId: worker?.personalId || '',
-    dailySalary: worker?.dailySalary || 0,
+    dailysalary: worker?.dailysalary || 0,
     region_id: worker?.region_id || ''
   });
 
@@ -45,7 +45,7 @@ export function EditWorkerDialog({
       setFormData({
         fullName: worker.fullName,
         personalId: worker.personalId,
-        dailySalary: worker.dailySalary,
+        dailysalary: worker.dailysalary,
         region_id: worker.region_id || ''
       });
     } else if (isCreating) {
@@ -53,7 +53,7 @@ export function EditWorkerDialog({
       setFormData({
         fullName: '',
         personalId: '',
-        dailySalary: 0,
+        dailysalary: 0,
         region_id: regions.length > 0 ? regions[0].id : ''
       });
     }
@@ -115,12 +115,12 @@ export function EditWorkerDialog({
           </Select>
         </div>
         <div>
-          <Label htmlFor="dailySalary">Daily Salary (GEL)</Label>
+          <Label htmlFor="dailysalary">Daily Salary (GEL)</Label>
           <Input
-            id="dailySalary"
+            id="dailysalary"
             type="number"
-            value={formData.dailySalary}
-            onChange={(e) => setFormData({...formData, dailySalary: Number(e.target.value)})}
+            value={formData.dailysalary}
+            onChange={(e) => setFormData({...formData, dailysalary: Number(e.target.value)})}
             className="mt-1"
           />
         </div>

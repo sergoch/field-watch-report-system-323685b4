@@ -81,7 +81,7 @@ export const fetchEngineerDashboardStats = async (
       .select(`
         report_id, 
         workers:worker_id(
-          id, full_name, personal_id, daily_salary
+          id, full_name, personal_id, dailysalary
         )
       `)
       .in('report_id', (recentReports || []).map(r => r.id));
@@ -96,12 +96,12 @@ export const fetchEngineerDashboardStats = async (
           if (!workersSet.has(workerId)) {
             workersSet.add(workerId);
             // Cast the workers object properly to access its properties
-            const worker = rw.workers as unknown as { id: string; full_name: string; personal_id: string; daily_salary: number };
+            const worker = rw.workers as unknown as { id: string; full_name: string; personal_id: string; dailysalary: number };
             workers.push({
               id: workerId,
               fullName: worker.full_name || '',
               personalId: worker.personal_id || '',
-              dailySalary: worker.daily_salary || 0
+              dailysalary: worker.dailysalary || 0
             } as Worker);
           }
         }
@@ -115,7 +115,7 @@ export const fetchEngineerDashboardStats = async (
         report_id, 
         fuel_amount,
         equipment:equipment_id(
-          id, type, license_plate, operator_id, operator_name, fuel_type, daily_salary
+          id, type, license_plate, operator_id, operator_name, fuel_type, dailysalary
         )
       `)
       .in('report_id', (recentReports || []).map(r => r.id));
@@ -137,7 +137,7 @@ export const fetchEngineerDashboardStats = async (
               operator_id: string;
               operator_name: string;
               fuel_type: string;
-              daily_salary: number;
+              dailysalary: number;
             };
             
             equipment.push({
@@ -147,7 +147,7 @@ export const fetchEngineerDashboardStats = async (
               operatorId: equip.operator_id || '',
               operatorName: equip.operator_name || '',
               fuelType: equip.fuel_type as "diesel" | "gasoline" || 'diesel',
-              dailySalary: equip.daily_salary || 0
+              dailysalary: equip.dailysalary || 0
             } as Equipment);
           }
         }
