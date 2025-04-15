@@ -1,52 +1,89 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { v4 as uuidv4 } from "uuid";
 
-// Upload report image to Supabase storage
+/**
+ * Uploads an image to the report_images storage bucket
+ * @param file The file to upload
+ * @returns The URL of the uploaded image or null if upload failed
+ */
 export async function uploadReportImage(file: File): Promise<string | null> {
   try {
-    // Get authenticated user
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !authData.user) {
-      console.error('Auth error when uploading image:', authError);
-      return null;
-    }
-    
-    const userId = authData.user.id;
+    // Generate a unique file name to avoid collisions
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `${userId}/${fileName}`;
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const filePath = `${fileName}`;
+    
+    console.log('Uploading file:', filePath);
     
     // Upload to report_images bucket
-    const { error: uploadError } = await supabase.storage
+    const { data, error } = await supabase.storage
       .from('report_images')
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
     
-    if (uploadError) {
-      console.error('Error uploading image:', uploadError);
-      return null;
+    if (error) {
+      console.error('Error uploading image:', error);
+      throw error;
     }
     
     // Get the public URL
-    const { data } = supabase.storage
+    const { data: { publicUrl } } = supabase.storage
       .from('report_images')
       .getPublicUrl(filePath);
     
-    return data.publicUrl;
-  } catch (err) {
-    console.error('Exception when uploading image:', err);
+    console.log('Upload successful. Public URL:', publicUrl);
+    
+    return publicUrl;
+  } catch (error) {
+    console.error('Upload error:', error);
     return null;
   }
 }
 
-// Generate a file name
-export function generateFileName(prefix: string = ''): string {
-  const timestamp = new Date().getTime();
-  const random = Math.floor(Math.random() * 1000);
-  return `${prefix}${timestamp}_${random}`;
-}
-
-// Get file extension from file object
-export function getFileExtension(file: File): string {
-  return file.name.split('.').pop() || '';
+/**
+ * Uploads an image to the storage bucket and returns the URL
+ * @param file The file to upload
+ * @param bucket The bucket to upload to, defaults to 'report_images'
+ * @returns The URL of the uploaded image or null if upload failed
+ */
+export async function uploadImage(
+  file: File,
+  bucket: string = 'report_images'
+): Promise<string | null> {
+  try {
+    // Generate a unique file name to avoid collisions
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const filePath = `${fileName}`;
+    
+    console.log(`Uploading file to ${bucket}:`, filePath);
+    
+    // Upload to specified bucket
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+    
+    if (error) {
+      console.error(`Error uploading image to ${bucket}:`, error);
+      throw error;
+    }
+    
+    // Get the public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath);
+    
+    console.log('Upload successful. Public URL:', publicUrl);
+    
+    return publicUrl;
+  } catch (error) {
+    console.error('Upload error:', error);
+    return null;
+  }
 }

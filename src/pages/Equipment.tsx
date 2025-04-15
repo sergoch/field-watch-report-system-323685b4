@@ -6,7 +6,10 @@ import { DeleteEquipmentDialog } from "@/components/equipment/DeleteEquipmentDia
 import { ViewEquipmentDialog } from "@/components/equipment/ViewEquipmentDialog";
 import { EquipmentHeader } from "@/components/equipment/EquipmentHeader";
 import { EquipmentSearch } from "@/components/equipment/EquipmentSearch";
+import { EquipmentRegionFilter } from "@/components/equipment/EquipmentRegionFilter";
 import { EquipmentProvider, useEquipmentContext } from "@/contexts/EquipmentProvider";
+import { useAuth } from "@/contexts/AuthContext";
+import { isAdmin } from "@/utils/auth";
 
 function EquipmentContent() {
   const {
@@ -28,8 +31,13 @@ function EquipmentContent() {
     handleSaveEdit,
     handleDelete,
     handleCreateNew,
-    handleExportToExcel
+    handleExportToExcel,
+    selectedRegion,
+    setSelectedRegion
   } = useEquipmentContext();
+
+  const { user } = useAuth();
+  const userIsAdmin = isAdmin(user);
 
   return (
     <div className="space-y-6">
@@ -44,10 +52,20 @@ function EquipmentContent() {
           <CardTitle>Equipment List</CardTitle>
         </CardHeader>
         <CardContent>
-          <EquipmentSearch 
-            value={searchQuery}
-            onChange={setSearchQuery}
-          />
+          <div className="flex flex-col md:flex-row md:items-end gap-4 mb-4">
+            <div className="flex-1">
+              <EquipmentSearch 
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+            </div>
+            <EquipmentRegionFilter 
+              regions={regions}
+              selectedRegion={selectedRegion}
+              onRegionChange={setSelectedRegion}
+              isAdmin={userIsAdmin}
+            />
+          </div>
           
           <EquipmentTable 
             equipment={equipment}

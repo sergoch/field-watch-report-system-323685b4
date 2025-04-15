@@ -93,6 +93,24 @@ export function RecentReportsTable({ reports: externalReports, isLoading: extern
     if (user) {
       fetchReports();
     }
+    
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('reports_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'reports'
+      }, (payload) => {
+        if (user) {
+          fetchReports();
+        }
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [externalReports, toast, user, userIsAdmin]);
   
   const isLoadingReports = externalLoading || isLoading;

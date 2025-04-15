@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
@@ -40,6 +39,8 @@ interface EquipmentContextType {
   handleCreateNew: (formData: EquipmentFormData) => Promise<void>;
   handleExportToExcel: () => void;
   refetch: () => Promise<void>;
+  selectedRegion: string | null;
+  setSelectedRegion: (region: string | null) => void;
 }
 
 const EquipmentContext = createContext<EquipmentContextType | undefined>(undefined);
@@ -55,14 +56,19 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [regions, setRegions] = useState<{ id: string, name: string }[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   
-  // Determine proper filter based on user role and assigned regions
   const userIsAdmin = isAdmin(user);
-  const filter = userIsAdmin 
-    ? undefined 
-    : user?.assignedRegions && user.assignedRegions.length > 0 
-      ? { region_id: user.assignedRegions } 
-      : undefined;
+  
+  let filter: string | Record<string, any> | undefined;
+  
+  if (!userIsAdmin) {
+    if (user?.assignedRegions && user.assignedRegions.length > 0) {
+      filter = { region_id: user.assignedRegions };
+    }
+  } else if (selectedRegion) {
+    filter = { region_id: selectedRegion };
+  }
   
   const { 
     data: equipment, 
@@ -82,7 +88,6 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       try {
         let query = supabase.from('regions').select('id, name').order('name');
         
-        // If engineer with assigned regions, only fetch those regions
         if (!userIsAdmin && user?.assignedRegions && user.assignedRegions.length > 0) {
           query = query.in('id', user.assignedRegions);
         }
@@ -98,6 +103,10 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
           });
         } else if (data) {
           setRegions(data);
+          
+          if (!userIsAdmin && user?.regionId && !selectedRegion) {
+            setSelectedRegion(user.regionId);
+          }
         }
       } catch (err: any) {
         console.error('Exception when fetching regions:', err);
@@ -112,7 +121,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
     if (user) {
       fetchRegions();
     }
-  }, [toast, user, userIsAdmin]);
+  }, [toast, user, userIsAdmin, selectedRegion]);
 
   const filteredEquipment = equipment.filter(equip => 
     equip.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -127,7 +136,6 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
 
     setIsSaving(true);
     try {
-      // Make sure the region ID is one that this user can access
       if (!userIsAdmin && formData.region_id && user?.assignedRegions) {
         if (!user.assignedRegions.includes(formData.region_id)) {
           throw new Error("You don't have permission to assign equipment to this region");
@@ -166,7 +174,6 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
     
     setIsDeleting(true);
     try {
-      // Check if this user has permission to delete this equipment
       if (!userIsAdmin && deleteEquipment.region_id) {
         if (user?.assignedRegions && !user.assignedRegions.includes(deleteEquipment.region_id)) {
           throw new Error("You don't have permission to delete equipment from this region");
@@ -197,13 +204,11 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
     
     setIsSaving(true);
     try {
-      // If engineer and no region provided, use their primary region
       let regionId = formData.region_id;
       if (!userIsAdmin && !regionId && user?.regionId) {
         regionId = user.regionId;
       }
       
-      // Make sure the region ID is one that this user can access
       if (!userIsAdmin && regionId && user?.assignedRegions) {
         if (!user.assignedRegions.includes(regionId)) {
           throw new Error("You don't have permission to add equipment to this region");
@@ -217,7 +222,8 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
         operatorId: formData.operatorId,
         dailySalary: formData.dailySalary,
         fuelType: formData.fuelType,
-        region_id: regionId || null
+        region_id: regionId || null,
+        created_at: new Date().toISOString()
       });
       
       toast({
@@ -279,7 +285,6 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       return false;
     }
     
-    // For engineers, a region is required
     if (!userIsAdmin && !formData.region_id && !user?.regionId) {
       toast({
         title: "Validation Error",
@@ -348,7 +353,9 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
     handleDelete,
     handleCreateNew,
     handleExportToExcel,
-    refetch
+    refetch,
+    selectedRegion,
+    setSelectedRegion
   };
 
   return <EquipmentContext.Provider value={value}>{children}</EquipmentContext.Provider>;

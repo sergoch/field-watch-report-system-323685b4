@@ -29,6 +29,7 @@ export function useAdminDashboardData({
     regionsData: []
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
@@ -42,8 +43,10 @@ export function useAdminDashboardData({
           engineerId
         });
         setStats(data);
-      } catch (error) {
+        setError(null);
+      } catch (error: any) {
         console.error('Error fetching admin dashboard stats:', error);
+        setError(error);
       } finally {
         setIsLoading(false);
       }
@@ -51,47 +54,51 @@ export function useAdminDashboardData({
 
     fetchDashboardStats();
     
-    // Set up realtime subscriptions
+    // Set up realtime subscriptions for all relevant tables
     const reportsChannel = supabase
-      .channel('public:reports')
+      .channel('public:reports:admin')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'reports'
       }, () => {
+        console.log('Reports changed, refreshing dashboard data');
         fetchDashboardStats();
       })
       .subscribe();
       
     const incidentsChannel = supabase
-      .channel('public:incidents')
+      .channel('public:incidents:admin')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'incidents'
       }, () => {
+        console.log('Incidents changed, refreshing dashboard data');
         fetchDashboardStats();
       })
       .subscribe();
       
     const workersChannel = supabase
-      .channel('public:workers')
+      .channel('public:workers:admin')
       .on('postgres_changes', {
         event: '*', 
         schema: 'public',
         table: 'workers'
       }, () => {
+        console.log('Workers changed, refreshing dashboard data');
         fetchDashboardStats();
       })
       .subscribe();
       
     const equipmentChannel = supabase
-      .channel('public:equipment')
+      .channel('public:equipment:admin')
       .on('postgres_changes', {
         event: '*',
         schema: 'public', 
         table: 'equipment'
       }, () => {
+        console.log('Equipment changed, refreshing dashboard data');
         fetchDashboardStats();
       })
       .subscribe();
@@ -104,5 +111,5 @@ export function useAdminDashboardData({
     };
   }, [timeFrame, dateRange, regionId, engineerId]);
 
-  return { stats, isLoading };
+  return { stats, isLoading, error, setStats };
 }

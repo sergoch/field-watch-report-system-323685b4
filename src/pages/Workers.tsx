@@ -7,6 +7,9 @@ import { DeleteWorkerDialog } from "@/components/workers/DeleteWorkerDialog";
 import { WorkersHeader } from "@/components/workers/WorkersHeader";
 import { WorkersSearch } from "@/components/workers/WorkersSearch";
 import { WorkerProvider, useWorkerContext } from "@/contexts/WorkerProvider";
+import { WorkersRegionFilter } from "@/components/workers/WorkersRegionFilter";
+import { useAuth } from "@/contexts/AuthContext";
+import { isAdmin } from "@/utils/auth";
 
 function WorkersContent() {
   const {
@@ -28,8 +31,13 @@ function WorkersContent() {
     handleSaveEdit,
     handleDelete,
     handleCreateNew,
-    handleExportToExcel
+    handleExportToExcel,
+    selectedRegion,
+    setSelectedRegion
   } = useWorkerContext();
+
+  const { user } = useAuth();
+  const userIsAdmin = isAdmin(user);
 
   return (
     <div className="space-y-6">
@@ -43,10 +51,20 @@ function WorkersContent() {
       
       <Card>
         <CardContent className="pt-6">
-          <WorkersSearch 
-            value={searchQuery}
-            onChange={setSearchQuery}
-          />
+          <div className="flex flex-col md:flex-row md:items-end gap-4 mb-4">
+            <div className="flex-1">
+              <WorkersSearch 
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+            </div>
+            <WorkersRegionFilter 
+              regions={regions}
+              selectedRegion={selectedRegion}
+              onRegionChange={setSelectedRegion}
+              isAdmin={userIsAdmin}
+            />
+          </div>
           
           <WorkersTable 
             workers={workers}

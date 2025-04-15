@@ -100,6 +100,24 @@ export function RecentIncidentsTable({ incidents: externalIncidents, isLoading: 
     if (user) {
       fetchIncidents();
     }
+    
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('incidents_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'incidents'
+      }, (payload) => {
+        if (user) {
+          fetchIncidents();
+        }
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [externalIncidents, toast, user, userIsAdmin]);
 
   // Function to determine badge color based on incident type

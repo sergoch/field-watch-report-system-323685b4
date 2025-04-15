@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { FileText, AlertTriangle, Users, Calendar, Truck, Briefcase } from "lucide-react";
@@ -14,6 +15,7 @@ import { RecentIncidentsTable } from "./tables/RecentIncidentsTable";
 import { DashboardFilters } from "./filters/DashboardFilters";
 import { Report, Incident, Worker, Equipment } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export function EngineerDashboard() {
   const { user } = useAuth();
@@ -43,7 +45,9 @@ export function EngineerDashboard() {
         const dashboardStats = await fetchEngineerDashboardStats(user.id, {
           timeFrame,
           dateRange,
-          regionId: user.regionId
+          regionId: user.assignedRegions && user.assignedRegions.length > 0 
+            ? user.assignedRegions[0] 
+            : undefined
         });
         
         setStats(dashboardStats);
@@ -62,6 +66,36 @@ export function EngineerDashboard() {
     if (user) {
       fetchStats();
     }
+    
+    // Set up realtime subscriptions
+    const reportsChannel = supabase
+      .channel('engineer_reports_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'reports',
+        filter: user?.id ? `engineer_id=eq.${user.id}` : undefined 
+      }, () => {
+        fetchStats();
+      })
+      .subscribe();
+      
+    const incidentsChannel = supabase
+      .channel('engineer_incidents_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'incidents',
+        filter: user?.id ? `engineer_id=eq.${user.id}` : undefined 
+      }, () => {
+        fetchStats();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(reportsChannel);
+      supabase.removeChannel(incidentsChannel);
+    };
   }, [user, timeFrame, dateRange, toast]);
 
   const handleTimeFrameChange = (value: TimeFrame) => {
@@ -144,8 +178,8 @@ export function EngineerDashboard() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <RecentReportsTable reports={stats.recentReports} isLoading={isLoading} />
-            <RecentIncidentsTable incidents={stats.recentIncidents} isLoading={isLoading} />
+            <RecentReportsTable isLoading={isLoading} />
+            <RecentIncidentsTable isLoading={isLoading} />
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 flex-wrap">

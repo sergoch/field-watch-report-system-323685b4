@@ -75,8 +75,8 @@ export function AdminDashboard() {
       <DashboardCharts stats={stats} isLoading={isLoading} timeFrame={timeFrame} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <RecentReportsTable reports={stats.recentReports} />
-        <RecentIncidentsTable incidents={stats.recentIncidents} />
+        <RecentReportsTable reports={stats.recentReports} isLoading={isLoading} />
+        <RecentIncidentsTable incidents={stats.recentIncidents} isLoading={isLoading} />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">

@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
@@ -37,6 +36,8 @@ interface WorkerContextType {
   handleCreateNew: (formData: WorkerFormData) => Promise<void>;
   handleExportToExcel: () => void;
   refetch: () => Promise<void>;
+  selectedRegion: string | null;
+  setSelectedRegion: (region: string | null) => void;
 }
 
 const WorkerContext = createContext<WorkerContextType | undefined>(undefined);
@@ -52,14 +53,19 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [regions, setRegions] = useState<{ id: string, name: string }[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   
-  // Determine proper filter based on user role and assigned regions
   const userIsAdmin = isAdmin(user);
-  const filter = userIsAdmin 
-    ? undefined 
-    : user?.assignedRegions && user.assignedRegions.length > 0 
-      ? { region_id: user.assignedRegions } 
-      : undefined;
+  
+  let filter: string | Record<string, any> | undefined;
+  
+  if (!userIsAdmin) {
+    if (user?.assignedRegions && user.assignedRegions.length > 0) {
+      filter = { region_id: user.assignedRegions };
+    }
+  } else if (selectedRegion) {
+    filter = { region_id: selectedRegion };
+  }
   
   const { 
     data: workers, 
@@ -79,7 +85,6 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
       try {
         let query = supabase.from('regions').select('id, name').order('name');
         
-        // If engineer with assigned regions, only fetch those regions
         if (!userIsAdmin && user?.assignedRegions && user.assignedRegions.length > 0) {
           query = query.in('id', user.assignedRegions);
         }
@@ -95,6 +100,10 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
           });
         } else if (data) {
           setRegions(data);
+          
+          if (!userIsAdmin && user?.regionId && !selectedRegion) {
+            setSelectedRegion(user.regionId);
+          }
         }
       } catch (err: any) {
         console.error('Exception when fetching regions:', err);
@@ -109,7 +118,7 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
     if (user) {
       fetchRegions();
     }
-  }, [toast, user, userIsAdmin]);
+  }, [toast, user, userIsAdmin, selectedRegion]);
 
   const filteredWorkers = workers.filter(worker => 
     worker.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -123,7 +132,6 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
 
     setIsSaving(true);
     try {
-      // Make sure the region ID is one that this user can access
       if (!userIsAdmin && formData.region_id && user?.assignedRegions) {
         if (!user.assignedRegions.includes(formData.region_id)) {
           throw new Error("You don't have permission to assign workers to this region");
@@ -159,7 +167,6 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
     
     setIsDeleting(true);
     try {
-      // Check if this user has permission to delete this worker
       if (!userIsAdmin && deleteWorker.region_id) {
         if (user?.assignedRegions && !user.assignedRegions.includes(deleteWorker.region_id)) {
           throw new Error("You don't have permission to delete workers from this region");
@@ -190,13 +197,11 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
     
     setIsSaving(true);
     try {
-      // If engineer and no region provided, use their primary region
       let regionId = formData.region_id;
       if (!userIsAdmin && !regionId && user?.regionId) {
         regionId = user.regionId;
       }
       
-      // Make sure the region ID is one that this user can access
       if (!userIsAdmin && regionId && user?.assignedRegions) {
         if (!user.assignedRegions.includes(regionId)) {
           throw new Error("You don't have permission to add workers to this region");
@@ -207,7 +212,8 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
         fullName: formData.fullName,
         personalId: formData.personalId,
         dailySalary: formData.dailySalary,
-        region_id: regionId || null
+        region_id: regionId || null,
+        created_at: new Date().toISOString()
       });
       
       toast({
@@ -253,7 +259,6 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
       return false;
     }
     
-    // For engineers, a region is required
     if (!userIsAdmin && !formData.region_id && !user?.regionId) {
       toast({
         title: "Validation Error",
@@ -319,7 +324,9 @@ export function WorkerProvider({ children }: { children: ReactNode }) {
     handleDelete,
     handleCreateNew,
     handleExportToExcel,
-    refetch
+    refetch,
+    selectedRegion,
+    setSelectedRegion
   };
 
   return <WorkerContext.Provider value={value}>{children}</WorkerContext.Provider>;

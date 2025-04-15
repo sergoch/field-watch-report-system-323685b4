@@ -1,3 +1,4 @@
+
 // User-related types
 export type UserRole = "engineer" | "admin";
 
