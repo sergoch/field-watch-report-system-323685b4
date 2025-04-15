@@ -47,6 +47,15 @@ export async function uploadImage(
 }
 
 /**
+ * Upload a report image to Supabase storage
+ * @param file The image file to upload
+ * @returns The URL of the uploaded file or null if the upload failed
+ */
+export async function uploadReportImage(file: File): Promise<string | null> {
+  return uploadImage(file, 'report_images');
+}
+
+/**
  * Delete an image from Supabase storage
  * @param url The public URL of the image to delete
  * @param bucket The storage bucket name

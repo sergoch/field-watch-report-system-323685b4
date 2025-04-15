@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -143,7 +142,6 @@ export function UserManager() {
   };
 
   const handleAddUser = async () => {
-    // Validate form data
     if (!formData.username.trim() || !formData.full_name.trim() || !formData.email.trim() || !formData.password) {
       toast({
         title: "Validation Error",
@@ -154,7 +152,6 @@ export function UserManager() {
     }
 
     try {
-      // 1. Create the engineer in the database
       const { data, error } = await supabase
         .from('engineers')
         .insert({
@@ -162,14 +159,13 @@ export function UserManager() {
           full_name: formData.full_name.trim(),
           email: formData.email.trim(),
           phone: formData.phone.trim(),
-          password_hash: formData.password, // In a real app, this would be hashed
+          password_hash: formData.password,
           active: true
         })
         .select();
 
       if (error) throw error;
 
-      // 2. If regions are selected, create engineer_regions records
       if (selectedRegions.length > 0 && data && data[0]) {
         const engineerId = data[0].id;
         
@@ -188,7 +184,6 @@ export function UserManager() {
         }
       }
 
-      // 3. Create auth account if integrated with Supabase Auth
       try {
         const { error: authError } = await supabase.auth.signUp({
           email: formData.email.trim(),
@@ -214,7 +209,6 @@ export function UserManager() {
         description: `${formData.username} has been added successfully.`
       });
       
-      // Reset form
       setFormData({
         username: "",
         full_name: "",
@@ -226,7 +220,6 @@ export function UserManager() {
       setSelectedRegions([]);
       setIsAddingUser(false);
       
-      // Refresh data
       await fetchEngineers();
     } catch (error: any) {
       console.error('Error adding user:', error);
@@ -249,7 +242,6 @@ export function UserManager() {
     }
 
     try {
-      // Update the engineer record
       const updateData: Record<string, any> = {
         username: formData.username.trim(),
         full_name: formData.full_name.trim(),
@@ -257,7 +249,6 @@ export function UserManager() {
         phone: formData.phone.trim()
       };
       
-      // Only include password if it was changed
       if (formData.password) {
         updateData.password_hash = formData.password;
       }
@@ -269,14 +260,11 @@ export function UserManager() {
 
       if (error) throw error;
 
-      // Update region assignments
-      // First remove existing assignments
       await supabase
         .from('engineer_regions')
         .delete()
         .eq('engineer_id', editUser.id);
         
-      // Then add new assignments
       if (selectedRegions.length > 0) {
         const regionAssignments = selectedRegions.map(regionId => ({
           engineer_id: editUser.id,
@@ -301,7 +289,6 @@ export function UserManager() {
       setIsEditingUser(false);
       setEditUser(null);
       
-      // Refresh data
       await fetchEngineers();
     } catch (error: any) {
       console.error('Error editing user:', error);
@@ -332,7 +319,6 @@ export function UserManager() {
       setIsDeletingUser(false);
       setDeleteUser(null);
       
-      // Refresh data
       await fetchEngineers();
     } catch (error: any) {
       console.error('Error deleting user:', error);
@@ -351,11 +337,10 @@ export function UserManager() {
       full_name: user.full_name,
       email: user.email,
       phone: user.phone || "",
-      password: "", // Don't pre-fill password
+      password: "",
       region_id: "",
     });
     
-    // Fetch user's assigned regions
     const userRegions = await fetchUserRegions(user.id);
     setSelectedRegions(userRegions);
     
@@ -421,7 +406,6 @@ export function UserManager() {
           </Table>
         )}
 
-        {/* Add User Dialog */}
         <Dialog open={isAddingUser} onOpenChange={setIsAddingUser}>
           <DialogContent className="sm:max-w-[525px]">
             <DialogHeader>
@@ -511,7 +495,6 @@ export function UserManager() {
           </DialogContent>
         </Dialog>
 
-        {/* Edit User Dialog */}
         <Dialog open={isEditingUser} onOpenChange={setIsEditingUser}>
           <DialogContent className="sm:max-w-[525px]">
             <DialogHeader>
@@ -598,8 +581,7 @@ export function UserManager() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete User Confirmation Dialog */}
-        <Dialog open={isDeletingUser} onOpenChange={setIsDeletingRegion}>
+        <Dialog open={isDeletingUser} onOpenChange={setIsDeletingUser}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Confirm Deletion</DialogTitle>
