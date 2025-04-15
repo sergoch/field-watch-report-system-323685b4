@@ -26,7 +26,7 @@ export function RecentIncidentsTable({ incidents, isLoading = false }: RecentInc
     switch (type.toLowerCase()) {
       case "cut": return "destructive";
       case "damage": return "destructive";
-      case "parallel": return "warning";
+      case "parallel": return "secondary"; // Changed from "warning" to "secondary"
       case "node": return "outline";
       case "hydrant": return "secondary";
       case "chamber": return "default";
