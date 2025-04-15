@@ -90,6 +90,7 @@ export type Database = {
           license_plate: string
           operator_id: string
           operator_name: string
+          region_id: string | null
           type: string
           updated_at: string | null
         }
@@ -101,6 +102,7 @@ export type Database = {
           license_plate: string
           operator_id: string
           operator_name: string
+          region_id?: string | null
           type: string
           updated_at?: string | null
         }
@@ -112,10 +114,19 @@ export type Database = {
           license_plate?: string
           operator_id?: string
           operator_name?: string
+          region_id?: string | null
           type?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "equipment_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       incidents: {
         Row: {
