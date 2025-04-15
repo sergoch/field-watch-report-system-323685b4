@@ -1,7 +1,10 @@
+
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { loginEngineer, getLoggedInEngineer, logoutEngineer } from '@/utils/auth/engineerLogin';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -29,6 +32,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setIsLoading(true);
       
       try {
+        // First check for engineer in localStorage
+        const engineerData = getLoggedInEngineer();
+        
+        if (engineerData) {
+          setUser({
+            id: engineerData.id,
+            name: engineerData.full_name,
+            email: engineerData.email,
+            role: 'engineer',
+          } as User);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Then check for Supabase admin session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -60,8 +78,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     
     checkSession();
     
-    // Set up auth listener
+    // Set up auth listener for admin users
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Only process for admin users, engineers are handled via localStorage
       if (session) {
         const { data: userData, error: userError } = await supabase
           .from('users')
@@ -77,7 +96,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         
         setUser(userData as User);
       } else {
-        setUser(null);
+        // Check if we have an engineer logged in
+        const engineerData = getLoggedInEngineer();
+        if (!engineerData) {
+          setUser(null);
+        }
       }
     });
     
@@ -107,39 +130,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         });
       } else {
         // Engineer login via custom RPC function
-        const { data, error } = await supabase.rpc('authenticate_engineer', {
-          p_username: identifier,
-          p_password: password
-        });
-        
-        if (error || !data || data.length === 0) {
-          throw error || new Error('Invalid engineer credentials');
+        try {
+          const engineerData = await loginEngineer(identifier, password);
+          
+          setUser({
+            id: engineerData.id,
+            name: engineerData.full_name,
+            email: engineerData.email,
+            role: 'engineer',
+          } as User);
+          
+          toast({
+            title: "Engineer login successful",
+            description: `Welcome back, ${engineerData.full_name}!`,
+          });
+        } catch (error) {
+          throw new Error('Invalid username or password');
         }
-        
-        // Create a session for the engineer using their email from the RPC result
-        const engineerData = data[0];
-        
-        // Sign in with the engineer's email and password
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: engineerData.email,
-          password,
-        });
-        
-        if (signInError) {
-          throw signInError;
-        }
-        
-        toast({
-          title: "Engineer login successful",
-          description: `Welcome back, ${engineerData.full_name}!`,
-        });
       }
     } catch (error: any) {
       console.error('Login error:', error);
       setError(error.message || "An error occurred during login");
       toast({
         title: "Login failed",
-        description: error.message || "An error occurred during login",
+        description: error.message || "Invalid username or password",
         variant: "destructive",
       });
       throw error;
@@ -149,13 +163,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const logout = async () => {
     try {
       setError(null);
-      const { error } = await supabase.auth.signOut();
       
-      if (error) {
-        throw error;
+      // Check if we have an engineer logged in
+      const engineerData = getLoggedInEngineer();
+      
+      if (engineerData) {
+        // Engineer logout
+        logoutEngineer();
+        setUser(null);
+      } else {
+        // Admin logout via Supabase auth
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          throw error;
+        }
+        
+        setUser(null);
       }
       
-      setUser(null);
       toast({
         title: "Logout successful",
         description: "You have been logged out",

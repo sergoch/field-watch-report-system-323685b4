@@ -3,27 +3,15 @@ import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { getLoggedInEngineer } from '@/utils/auth/engineerLogin';
 
 export default function LoginPage() {
   const { user, isLoading } = useAuth();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
 
-  // Check for existing Supabase session
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        console.log("Active Supabase session detected in Login page");
-      }
-    };
-    
-    checkSession();
-  }, []);
-
-  // If already authenticated, redirect to dashboard
-  if (!isLoading && user) {
+  // If already authenticated via context or localStorage, redirect to dashboard
+  if (!isLoading && (user || getLoggedInEngineer())) {
     return <Navigate to={from} replace />;
   }
 
