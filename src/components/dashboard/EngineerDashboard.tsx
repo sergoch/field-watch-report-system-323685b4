@@ -1,11 +1,11 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { FileText, AlertTriangle, Users, Calendar, Truck, Briefcase } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DateRange } from "react-day-picker";
-import { TimeFrame, fetchEngineerDashboardStats } from "@/utils/dashboard";
+import { TimeFrame, EngineerDashboardStats } from "@/utils/dashboard/types";
+import { fetchEngineerDashboardStats } from "@/utils/dashboard/engineerDashboard";
 import { StatsCard } from "./stats/StatsCard";
 import { WorkersTable } from "./tables/WorkersTable";
 import { EquipmentTable } from "./tables/EquipmentTable";
@@ -15,23 +15,12 @@ import { DashboardFilters } from "./filters/DashboardFilters";
 import { Report, Incident, Worker, Equipment } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
-interface DashboardStats {
-  totalReports: number;
-  totalIncidents: number;
-  totalWorkers: Worker[];
-  totalEquipment: Equipment[];
-  totalOperators: number;
-  totalFuel: number;
-  recentReports: Report[];
-  recentIncidents: Incident[];
-}
-
 export function EngineerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("week");
-  const [stats, setStats] = useState<DashboardStats>({
+  const [stats, setStats] = useState<EngineerDashboardStats>({
     totalReports: 0,
     totalIncidents: 0,
     totalWorkers: [],

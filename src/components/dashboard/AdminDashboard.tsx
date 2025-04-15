@@ -4,12 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Users, Truck, AlertTriangle, FileText, BarChart3, ListFilter, Briefcase, Tractor } from "lucide-react";
 import { DateRange } from "react-day-picker";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { 
   AdminDashboardStats, 
   fetchAdminDashboardStats, 
   TimeFrame 
-} from "@/utils/dashboard";
+} from "@/utils/dashboard/types";
 import { DashboardFilters } from '@/components/dashboard/filters/DashboardFilters';
 import { StatsCard } from '@/components/dashboard/stats/StatsCard';
 import { RecentReportsTable } from '@/components/dashboard/tables/RecentReportsTable';
@@ -17,11 +17,13 @@ import { RecentIncidentsTable } from '@/components/dashboard/tables/RecentIncide
 import { Link } from "react-router-dom";
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAdminDashboardStats as fetchStats } from "@/utils/dashboard/adminDashboard";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 export function AdminDashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("week");
   const [regionId, setRegionId] = useState<string | undefined>();
@@ -39,11 +41,11 @@ export function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchDashboardStats = async () => {
       setIsLoading(true);
       
       try {
-        const data = await fetchAdminDashboardStats({
+        const data = await fetchStats({
           timeFrame,
           dateRange,
           regionId,
@@ -57,7 +59,7 @@ export function AdminDashboard() {
       }
     };
 
-    fetchStats();
+    fetchDashboardStats();
     
     // Set up realtime subscriptions to update stats when data changes
     const reportsChannel = supabase
@@ -67,7 +69,7 @@ export function AdminDashboard() {
         schema: 'public',
         table: 'reports'
       }, () => {
-        fetchStats();
+        fetchDashboardStats();
       })
       .subscribe();
       
@@ -78,7 +80,7 @@ export function AdminDashboard() {
         schema: 'public',
         table: 'incidents'
       }, () => {
-        fetchStats();
+        fetchDashboardStats();
       })
       .subscribe();
       
@@ -89,7 +91,7 @@ export function AdminDashboard() {
         schema: 'public',
         table: 'workers'
       }, () => {
-        fetchStats();
+        fetchDashboardStats();
       })
       .subscribe();
       
@@ -100,7 +102,7 @@ export function AdminDashboard() {
         schema: 'public', 
         table: 'equipment'
       }, () => {
-        fetchStats();
+        fetchDashboardStats();
       })
       .subscribe();
       
@@ -155,7 +157,7 @@ export function AdminDashboard() {
           <DashboardFilters
             timeFrame={timeFrame}
             dateRange={dateRange}
-            onTimeFrameChange={setTimeFrame}
+            onTimeFrameChange={(value: TimeFrame) => setTimeFrame(value)}
             onDateRangeChange={setDateRange}
           />
         </div>

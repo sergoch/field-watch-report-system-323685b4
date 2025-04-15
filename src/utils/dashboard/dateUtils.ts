@@ -1,6 +1,6 @@
 
 import { DateRange } from "react-day-picker";
-import { TimeFrame } from ".";
+import { TimeFrame } from "./types";
 import { addDays, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
 
 export function formatDateForQuery(date: Date | undefined): string | undefined {
@@ -17,7 +17,7 @@ export function getDateRangeFromTimeFrame(
   if (timeFrame === "custom" && customRange?.from && customRange?.to) {
     return {
       from: customRange.from,
-      to: customRange.to
+      to: customRange.to || today // Ensure 'to' is never undefined
     };
   }
   

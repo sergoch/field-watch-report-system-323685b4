@@ -64,7 +64,13 @@ export function useSupabaseRealtime<T extends Record<string, any>>({
       
       if (fetchError) throw fetchError;
       
-      setData(result as T[]);
+      // Fix for TypeScript error: type casting the result to T[]
+      if (result) {
+        setData(result as unknown as T[]);
+      } else {
+        setData([]);
+      }
+      
       setError(null);
     } catch (err) {
       console.error(`Error fetching data from ${tableName}:`, err);
